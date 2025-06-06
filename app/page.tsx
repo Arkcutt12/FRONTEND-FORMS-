@@ -1,152 +1,119 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
-import { X, Info, ChevronDown, Calendar, Check } from "lucide-react"
+import { useState, useRef } from "react"
+import { X, Info, AlertCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { FileUpload } from "@/components/file-upload"
 import { DXFViewer } from "@/components/dxf-viewer"
 import { Switch } from "@/components/ui/switch"
 import { FullscreenViewer } from "@/components/fullscreen-viewer"
 import { EmptyFilesState } from "@/components/empty-files-state"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 
 interface Material {
   id: string
   name: string
-  price: number
   description: string
   thicknessOptions: number[]
   unit: string
+  colors: { id: string; name: string; color: string }[]
 }
 
-interface ColorOption {
-  id: string
-  name: string
-  color: string
+interface FormData {
+  files: File[]
+  city: string
+  materialProvider: "client" | "arkcutt"
+  clientMaterial?: {
+    deliveryDate: string
+    deliveryTime: string
+    materialType: string
+    thickness: number
+  }
+  selectedMaterial?: string
+  selectedThickness?: number
+  selectedColor?: string
+  isUrgent: boolean
+  urgentDateTime?: string
 }
 
 export default function MaterialSelectionPage() {
-  const [currentStep, setCurrentStep] = useState<"materials" | "checkout">("materials")
-  const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null)
-  const [thicknesses, setThicknesses] = useState<Record<string, number>>({
-    balsa: 1,
-    plywood: 4,
-    dm: 2.5,
-    acrylic: 3,
-    cardboard: 2,
+  const [formData, setFormData] = useState<FormData>({
+    files: [],
+    city: "",
+    materialProvider: "arkcutt",
+    isUrgent: false,
   })
-  const [total, setTotal] = useState(0)
-  const [files, setFiles] = useState<File[]>([])
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [previewFile, setPreviewFile] = useState<File | null>(null)
-  const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [needDeliveryDate, setNeedDeliveryDate] = useState(true)
-  const [deliveryDate, setDeliveryDate] = useState<string>("")
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
+  const [thicknessError, setThicknessError] = useState("")
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdown && !(event.target as Element).closest(".dropdown-container")) {
-        setOpenDropdown(null)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [openDropdown])
-
-  // Update total when files change
-  useEffect(() => {
-    let newTotal = 0
-
-    // Add price for selected material
-    if (selectedMaterial) {
-      const material = materials.find((m) => m.id === selectedMaterial)
-      if (material) {
-        newTotal += material.price
-      }
-    }
-
-    // Add price for each file (21€ per file)
-    newTotal += files.length * 21
-
-    setTotal(newTotal)
-  }, [selectedMaterial, files])
+  const cities = [
+    { id: "madrid", name: "Madrid" },
+    { id: "barcelona", name: "Barcelona" },
+    { id: "malaga", name: "Málaga" },
+    { id: "home", name: "A domicilio" },
+  ]
 
   const materials: Material[] = [
     {
+      id: "acrylic",
+      name: "Metacrilato",
+      description: "Material transparente y resistente, ideal para proyectos que requieren claridad visual.",
+      thicknessOptions: [3, 5, 8],
+      unit: "mm",
+      colors: [
+        { id: "transparent", name: "Transparente", color: "rgba(255, 255, 255, 0.1)" },
+        { id: "red", name: "Rojo", color: "#DC2626" },
+        { id: "white", name: "Blanco", color: "#FFFFFF" },
+        { id: "black", name: "Negro", color: "#000000" },
+      ],
+    },
+    {
       id: "balsa",
       name: "Madera Balsa",
-      price: 10.0,
-      description: "The quick brown fox jumps over a lazy dog.",
+      description: "Madera ligera y fácil de trabajar, perfecta para maquetas y prototipos.",
       thicknessOptions: [1, 3, 5],
       unit: "mm",
+      colors: [{ id: "wood", name: "Color madera", color: "#D2B48C" }],
     },
     {
       id: "plywood",
       name: "Contrachapado",
-      price: 8.0,
-      description: "The quick brown fox jumps over a lazy dog.",
-      thicknessOptions: [4, 5],
+      description: "Madera laminada resistente, ideal para proyectos estructurales.",
+      thicknessOptions: [4, 5, 8],
       unit: "mm",
+      colors: [
+        { id: "light-wood", name: "Madera clara", color: "#F5DEB3" },
+        { id: "dark-wood", name: "Madera oscura", color: "#8B4513" },
+      ],
     },
     {
       id: "dm",
       name: "DM",
-      price: 5.0,
-      description: "The quick brown fox jumps over a lazy dog.",
-      thicknessOptions: [2.5],
+      description: "Tablero de densidad media, superficie lisa ideal para acabados.",
+      thicknessOptions: [2.5, 5, 8],
       unit: "mm",
-    },
-    {
-      id: "acrylic",
-      name: "Metacrilato",
-      price: 30.0,
-      description: "The quick brown fox jumps over a lazy dog.",
-      thicknessOptions: [3, 5],
-      unit: "mm",
+      colors: [{ id: "wood", name: "Color madera", color: "#D2B48C" }],
     },
     {
       id: "cardboard",
       name: "Cartón Gris",
-      price: 4.0,
-      description: "The quick brown fox jumps over a lazy dog.",
-      thicknessOptions: [2, 3],
+      description: "Material económico y versátil para prototipos y maquetas.",
+      thicknessOptions: [2, 3, 5],
       unit: "mm",
+      colors: [{ id: "grey", name: "Gris", color: "#9CA3AF" }],
     },
   ]
 
-  const colorOptions: ColorOption[] = [
-    { id: "white", name: "Blanco", color: "#FAFAFA" },
-    { id: "orange", name: "Naranja", color: "#7C2D12" },
-    { id: "green", name: "Verde", color: "#10B981" },
-    { id: "blue", name: "Azul", color: "#60A5FA" },
-    { id: "black", name: "Negro", color: "rgba(24, 24, 27, 0.88)" },
-  ]
-
-  const handleMaterialSelect = (materialId: string) => {
-    setSelectedMaterial(materialId)
-    const material = materials.find((m) => m.id === materialId)
-    if (material) {
-      // The total is now updated in the useEffect
-    }
-  }
-
-  const handleThicknessChange = (materialId: string, value: number) => {
-    setThicknesses((prev) => ({
-      ...prev,
-      [materialId]: value,
-    }))
-  }
+  const timeSlots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]
 
   const handlePreviewFile = (file: File) => {
     setPreviewFile(file)
@@ -156,40 +123,59 @@ export default function MaterialSelectionPage() {
     setPreviewFile(null)
   }
 
-  const handleContinue = () => {
-    setCurrentStep("checkout")
+  const handleThicknessChange = (value: string) => {
+    const thickness = Number.parseFloat(value)
+    if (thickness > 10) {
+      setThicknessError("El grosor no puede superar los 10mm")
+      return
+    }
+    setThicknessError("")
+    setFormData((prev) => ({
+      ...prev,
+      clientMaterial: {
+        ...prev.clientMaterial!,
+        thickness,
+      },
+    }))
   }
 
-  const handleBack = () => {
-    setCurrentStep("materials")
+  const getSelectedMaterial = () => {
+    return materials.find((m) => m.id === formData.selectedMaterial)
   }
 
-  const handleColorSelect = (colorId: string) => {
-    setSelectedColor(colorId)
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
   }
 
-  const handleDeliveryDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDeliveryDate(e.target.value)
+  const handleSubmit = () => {
+    // Here you would send the formData to your tracking system
+    console.log("Form Data:", formData)
+    alert("Formulario enviado correctamente. Te contactaremos pronto con el presupuesto.")
   }
 
-  const getFileNameWithoutExtension = (fileName: string) => {
-    const lastDotIndex = fileName.lastIndexOf(".")
-    if (lastDotIndex === -1) return fileName
-    return fileName.substring(0, lastDotIndex)
-  }
+  const isFormValid = () => {
+    if (formData.files.length === 0) return false
+    if (!formData.city) return false
+    if (!formData.materialProvider) return false
 
-  const getFileExtension = (fileName: string) => {
-    const lastDotIndex = fileName.lastIndexOf(".")
-    if (lastDotIndex === -1) return ""
-    return fileName.substring(lastDotIndex)
-  }
+    if (formData.materialProvider === "client") {
+      if (
+        !formData.clientMaterial?.deliveryDate ||
+        !formData.clientMaterial?.deliveryTime ||
+        !formData.clientMaterial?.materialType ||
+        !formData.clientMaterial?.thickness
+      ) {
+        return false
+      }
+    } else {
+      if (!formData.selectedMaterial || !formData.selectedThickness || !formData.selectedColor) return false
+    }
 
-  const getMaterialThickness = (materialId: string) => {
-    if (!materialId) return ""
-    const thickness = thicknesses[materialId]
-    const material = materials.find((m) => m.id === materialId)
-    if (!material) return ""
-    return `${thickness}${material.unit}`
+    if (formData.isUrgent && !formData.urgentDateTime) return false
+
+    return true
   }
 
   const toggleFullscreen = (imageIndex?: number) => {
@@ -205,18 +191,12 @@ export default function MaterialSelectionPage() {
     return "/images/robe-detail-2.jpeg"
   }
 
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
-  }
-
   return (
     <>
-      <div className="w-full min-h-screen bg-white">
-        <div className="w-full bg-[#FAFAFA] shadow-lg overflow-hidden">
+      <div className="w-full h-screen bg-white flex flex-col">
+        <div className="w-full bg-[#FAFAFA] shadow-lg overflow-hidden flex-1 flex flex-col">
           {/* Header */}
-          <div className="bg-white">
+          <div className="bg-white flex-shrink-0">
             <div className="flex justify-between items-center px-4 py-3">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="rounded-md">
@@ -226,17 +206,17 @@ export default function MaterialSelectionPage() {
                   esc
                 </div>
               </div>
-              <div className="text-[13px] font-medium text-[#52525B]">Nombre Servicio</div>
+              <div className="text-[13px] font-medium text-[#52525B]">Servicio Corte Láser</div>
               <Button variant="outline" className="rounded-xl px-3 h-10 text-[13px] font-medium">
-                Gallery Mode
+                Arkcutt
               </Button>
             </div>
             <Separator />
           </div>
 
-          <div className="flex flex-col md:flex-row">
-            {/* Gallery Section or DXF Viewer */}
-            <div className="flex-1 bg-[#FAFAFA] min-h-[500px] relative">
+          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+            {/* Gallery Section or DXF Viewer - Fixed height */}
+            <div className="flex-1 bg-[#FAFAFA] relative overflow-hidden">
               {previewFile ? (
                 <DXFViewer file={previewFile} onClose={closePreview} />
               ) : (
@@ -247,7 +227,10 @@ export default function MaterialSelectionPage() {
                 ref={fileInputRef}
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
-                    setFiles([...files, ...Array.from(e.target.files)])
+                    setFormData((prev) => ({
+                      ...prev,
+                      files: [...prev.files, ...Array.from(e.target.files)],
+                    }))
                   }
                 }}
                 accept=".dxf,.dwg"
@@ -258,303 +241,383 @@ export default function MaterialSelectionPage() {
 
             <Separator orientation="vertical" className="hidden md:block" />
 
-            {/* Form Section */}
-            <div className="w-full md:w-[560px] bg-white p-6 flex flex-col justify-between">
-              {currentStep === "materials" ? (
-                <div className="space-y-10">
+            {/* Form Section - Scrollable */}
+            <div className="w-full md:w-[560px] bg-white flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-8">
                   {/* File Upload Section */}
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-[16px] text-[#18181B]">Archivo</span>
+                        <span className="text-[16px] text-[#18181B]">Archivos</span>
                         <Info className="h-[15px] w-[15px] text-[#71717A]" />
                       </div>
-                      <p className="text-[13px] text-[#52525B]">
-                        Max file size is 50MB. Supported file types are .dxf and .dwg.
-                      </p>
+                      <p className="text-[13px] text-[#52525B]">Tamaño máximo: 50MB. Formatos soportados: .dxf, .dwg</p>
                     </div>
 
                     <FileUpload
-                      files={files}
-                      setFiles={setFiles}
+                      files={formData.files}
+                      setFiles={(files) => setFormData((prev) => ({ ...prev, files }))}
                       onPreviewFile={handlePreviewFile}
                       maxFiles={5}
-                      maxSize={50 * 1024 * 1024} // 50MB
-                      filePrice={21.0}
+                      maxSize={50 * 1024 * 1024}
+                      filePrice={0} // No price calculation
                     />
                   </div>
 
-                  {/* Materials Section */}
+                  {/* City Selection */}
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-[16px] text-[#18181B]">Materiales</span>
+                        <span className="text-[16px] text-[#18181B]">Ciudad</span>
                         <Info className="h-[15px] w-[15px] text-[#71717A]" />
                       </div>
-                      <p className="text-[13px] text-[#52525B]">Selecciona el material que deseas y su grosor.</p>
+                      <p className="text-[13px] text-[#52525B]">Selecciona dónde quieres realizar el corte.</p>
                     </div>
 
-                    <RadioGroup value={selectedMaterial || ""} onValueChange={handleMaterialSelect}>
-                      <div className="space-y-4">
-                        {materials.map((material) => (
-                          <div key={material.id} className="flex items-center gap-5">
-                            <div className="flex-1 flex items-start gap-2 p-2 border border-[#E4E4E7]/50 shadow-sm rounded-lg">
-                              <RadioGroupItem value={material.id} id={material.id} className="mt-1" />
-                              <div className="flex-1">
-                                <div className="flex justify-between">
-                                  <div className="flex items-center gap-1">
-                                    <Label htmlFor={material.id} className="text-[13px] font-medium text-[#18181B]">
-                                      {material.name}
-                                    </Label>
-                                    <Info className="h-[15px] w-[15px] text-[#71717A]" />
-                                  </div>
-                                  <span className="text-[13px] font-medium text-[#52525B]">
-                                    {material.price.toFixed(2)}€
-                                  </span>
-                                </div>
-                                <p className="text-[13px] text-[#52525B]">{material.description}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2.5">
-                              <div className="relative dropdown-container">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 rounded-md"
-                                  onClick={() => setOpenDropdown(openDropdown === material.id ? null : material.id)}
-                                >
-                                  <ChevronDown className="h-[15px] w-[15px]" />
-                                </Button>
-
-                                {openDropdown === material.id && (
-                                  <div className="absolute z-10 mt-1 w-20 rounded-md bg-white shadow-lg border border-[#E4E4E7]">
-                                    <div className="py-1">
-                                      {material.thicknessOptions.map((option) => (
-                                        <button
-                                          key={option}
-                                          className={`block w-full text-left px-4 py-2 text-sm ${
-                                            thicknesses[material.id as keyof typeof thicknesses] === option
-                                              ? "bg-[#F4F4F5] font-medium text-[#18181B]"
-                                              : "text-[#52525B] hover:bg-[#F4F4F5]"
-                                          }`}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleThicknessChange(material.id, option)
-                                            setOpenDropdown(null)
-                                          }}
-                                        >
-                                          {option} {material.unit}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="p-2 border border-[#E4E4E7]/50 shadow-sm rounded-lg min-w-[40px] text-center">
-                                <span className="text-[13px] font-medium text-[#18181B]">
-                                  {thicknesses[material.id as keyof typeof thicknesses]}
-                                </span>
-                              </div>
-
-                              <div className="p-2 border border-[#E4E4E7]/50 shadow-sm rounded-lg min-w-[40px] text-center">
-                                <span className="text-[13px] font-medium text-[#52525B]">{material.unit}</span>
-                              </div>
-                            </div>
+                    <RadioGroup
+                      value={formData.city}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, city: value }))}
+                    >
+                      <div className="grid grid-cols-2 gap-3">
+                        {cities.map((city) => (
+                          <div
+                            key={city.id}
+                            className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg"
+                          >
+                            <RadioGroupItem value={city.id} id={city.id} />
+                            <Label htmlFor={city.id} className="text-[13px] font-medium text-[#18181B] cursor-pointer">
+                              {city.name}
+                            </Label>
                           </div>
                         ))}
                       </div>
                     </RadioGroup>
                   </div>
 
-                  {/* Total Section */}
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-[16px] text-[#18181B]">Total</span>
-                    </div>
-                    <div className="flex h-8 w-[280px] rounded-md border border-[#E4E4E7]/50 shadow-sm bg-[#FAFAFA] overflow-hidden">
-                      <div className="px-2 py-1.5 text-[13px] text-[#71717A]">EUR</div>
-                      <Separator orientation="vertical" />
-                      <div className="flex-1 px-2 py-1.5 text-right text-[13px] text-[#18181B]">{total.toFixed(2)}</div>
-                      <Separator orientation="vertical" />
-                      <div className="px-2 py-1.5 text-center w-8 text-[13px] text-[#71717A]">€</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-10">
-                  {/* Historial Section */}
+                  {/* Material Provider Selection */}
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-[16px] text-[#18181B]">Historial</span>
+                        <span className="text-[16px] text-[#18181B]">Material</span>
                         <Info className="h-[15px] w-[15px] text-[#71717A]" />
                       </div>
-                      <p className="text-[13px] text-[#52525B]">
-                        Max file size is 500kb. Supported file types are .jpg and .png.
-                      </p>
+                      <p className="text-[13px] text-[#52525B]">¿Quién proporcionará el material?</p>
                     </div>
 
-                    {/* Files */}
-                    {files.map((file, index) => (
-                      <div
-                        key={`file-${index}`}
-                        className="px-3 py-2 bg-[#FAFAFA] shadow-sm rounded-lg flex justify-between items-center"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-6 h-8 bg-white shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] rounded flex items-center justify-center">
-                            <X className="w-4 h-4 text-[#52525B]" />
-                          </div>
-                          <div className="flex items-center">
-                            <span className="text-[13px] font-medium text-[#18181B]">
-                              {getFileNameWithoutExtension(file.name)}
-                            </span>
-                            <span className="text-[13px] text-[#52525B]">{getFileExtension(file.name)}</span>
-                          </div>
+                    <RadioGroup
+                      value={formData.materialProvider}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          materialProvider: value as "client" | "arkcutt",
+                          clientMaterial: undefined,
+                          selectedMaterial: undefined,
+                          selectedThickness: undefined,
+                          selectedColor: undefined,
+                        }))
+                      }
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg">
+                          <RadioGroupItem value="client" id="client" />
+                          <Label htmlFor="client" className="text-[13px] font-medium text-[#18181B] cursor-pointer">
+                            Yo proporcionaré el material
+                          </Label>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[13px] text-[#52525B]">+</span>
-                          <span className="text-[13px] text-[#52525B]">21.00€</span>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Material */}
-                    {selectedMaterial && (
-                      <div className="px-3 py-2 bg-[#FAFAFA] shadow-sm rounded-lg flex justify-between items-center">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="flex items-center">
-                            <span className="text-[13px] font-medium text-[#18181B]">
-                              {materials.find((m) => m.id === selectedMaterial)?.name}
-                            </span>
-                            <span className="text-[13px] text-[#52525B] ml-2">
-                              {getMaterialThickness(selectedMaterial)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[13px] text-[#52525B]">+</span>
-                          <span className="text-[13px] text-[#52525B]">
-                            {materials.find((m) => m.id === selectedMaterial)?.price.toFixed(2)}€
-                          </span>
+                        <div className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg">
+                          <RadioGroupItem value="arkcutt" id="arkcutt" />
+                          <Label htmlFor="arkcutt" className="text-[13px] font-medium text-[#18181B] cursor-pointer">
+                            Arkcutt proporcionará el material
+                          </Label>
                         </div>
                       </div>
-                    )}
+                    </RadioGroup>
                   </div>
 
-                  {/* Colors Section */}
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[16px] text-[#18181B]">Colores</span>
-                        <Info className="h-[15px] w-[15px] text-[#71717A]" />
+                  {/* Client Material Details */}
+                  {formData.materialProvider === "client" && (
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <span className="text-[16px] text-[#18181B]">Detalles del Material</span>
+                        <p className="text-[13px] text-[#52525B]">
+                          Proporciona los detalles del material que vas a entregar.
+                        </p>
                       </div>
-                      <p className="text-[13px] text-[#52525B]">Selecciona el color que deseas.</p>
-                    </div>
 
-                    <div className="flex items-center gap-4">
-                      {colorOptions.map((color) => (
-                        <button
-                          key={color.id}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                            selectedColor === color.id ? "ring-2 ring-[#18181B] ring-offset-2" : ""
-                          }`}
-                          onClick={() => handleColorSelect(color.id)}
-                          title={color.name}
-                        >
-                          <div
-                            className="w-5 h-5 rounded-full"
-                            style={{ backgroundColor: color.color }}
-                            aria-label={color.name}
-                          />
-                          {selectedColor === color.id && (
-                            <Check
-                              className={`absolute h-3 w-3 ${color.id === "white" ? "text-[#18181B]" : "text-white"}`}
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[13px] text-[#52525B]">Fecha de entrega</Label>
+                            <Input
+                              type="date"
+                              value={formData.clientMaterial?.deliveryDate || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  clientMaterial: {
+                                    ...prev.clientMaterial!,
+                                    deliveryDate: e.target.value,
+                                    deliveryTime: prev.clientMaterial?.deliveryTime || "",
+                                    materialType: prev.clientMaterial?.materialType || "",
+                                    thickness: prev.clientMaterial?.thickness || 0,
+                                  },
+                                }))
+                              }
                             />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                          </div>
 
-                  {/* Delivery Date Section */}
+                          <div className="space-y-2">
+                            <Label className="text-[13px] text-[#52525B]">Hora de entrega</Label>
+                            <select
+                              className="w-full h-10 px-3 py-2 border border-[#E4E4E7] rounded-md text-[13px]"
+                              value={formData.clientMaterial?.deliveryTime || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  clientMaterial: {
+                                    ...prev.clientMaterial!,
+                                    deliveryTime: e.target.value,
+                                  },
+                                }))
+                              }
+                            >
+                              <option value="">Seleccionar hora</option>
+                              {timeSlots.map((time) => (
+                                <option key={time} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[13px] text-[#52525B]">Tipo de material</Label>
+                          <Input
+                            placeholder="Ej: Metacrilato, Madera, Cartón..."
+                            value={formData.clientMaterial?.materialType || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                clientMaterial: {
+                                  ...prev.clientMaterial!,
+                                  materialType: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[13px] text-[#52525B]">Grosor (mm)</Label>
+                          <Input
+                            type="number"
+                            placeholder="Máximo 10mm"
+                            max="10"
+                            step="0.1"
+                            value={formData.clientMaterial?.thickness || ""}
+                            onChange={(e) => handleThicknessChange(e.target.value)}
+                          />
+                          {thicknessError && (
+                            <Alert variant="destructive">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>{thicknessError}</AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Arkcutt Material Selection */}
+                  {formData.materialProvider === "arkcutt" && (
+                    <>
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[16px] text-[#18181B]">Seleccionar Material</span>
+                            <Info className="h-[15px] w-[15px] text-[#71717A]" />
+                          </div>
+                          <p className="text-[13px] text-[#52525B]">
+                            Elige el material que quieres que proporcionemos.
+                          </p>
+                        </div>
+
+                        <RadioGroup
+                          value={formData.selectedMaterial || ""}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              selectedMaterial: value,
+                              selectedThickness: undefined,
+                              selectedColor: undefined,
+                            }))
+                          }
+                        >
+                          <div className="space-y-3">
+                            {materials.map((material) => (
+                              <div
+                                key={material.id}
+                                className="flex items-start gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg"
+                              >
+                                <RadioGroupItem value={material.id} id={material.id} className="mt-1" />
+                                <div className="flex-1">
+                                  <Label
+                                    htmlFor={material.id}
+                                    className="text-[13px] font-medium text-[#18181B] cursor-pointer"
+                                  >
+                                    {material.name}
+                                  </Label>
+                                  <p className="text-[13px] text-[#52525B] mt-1">{material.description}</p>
+                                  <p className="text-[11px] text-[#71717A] mt-1">
+                                    Grosores disponibles: {material.thicknessOptions.join(", ")} {material.unit}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {/* Thickness Selection */}
+                      {formData.selectedMaterial && (
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[16px] text-[#18181B]">Grosor</span>
+                              <Info className="h-[15px] w-[15px] text-[#71717A]" />
+                            </div>
+                            <p className="text-[13px] text-[#52525B]">
+                              Selecciona el grosor para {getSelectedMaterial()?.name}.
+                            </p>
+                          </div>
+
+                          <div className="relative">
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between h-10"
+                              onClick={() => setOpenDropdown(openDropdown === "thickness" ? null : "thickness")}
+                            >
+                              <span className="text-[13px]">
+                                {formData.selectedThickness
+                                  ? `${formData.selectedThickness} ${getSelectedMaterial()?.unit}`
+                                  : "Seleccionar grosor"}
+                              </span>
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+
+                            {openDropdown === "thickness" && (
+                              <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg border border-[#E4E4E7]">
+                                <div className="py-1">
+                                  {getSelectedMaterial()?.thicknessOptions.map((thickness) => (
+                                    <button
+                                      key={thickness}
+                                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#F4F4F5] ${
+                                        formData.selectedThickness === thickness
+                                          ? "bg-[#F4F4F5] font-medium text-[#18181B]"
+                                          : "text-[#52525B]"
+                                      }`}
+                                      onClick={() => {
+                                        setFormData((prev) => ({ ...prev, selectedThickness: thickness }))
+                                        setOpenDropdown(null)
+                                      }}
+                                    >
+                                      {thickness} {getSelectedMaterial()?.unit}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Color Selection */}
+                      {formData.selectedMaterial && formData.selectedThickness && (
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[16px] text-[#18181B]">Color</span>
+                              <Info className="h-[15px] w-[15px] text-[#71717A]" />
+                            </div>
+                            <p className="text-[13px] text-[#52525B]">
+                              Selecciona el color para {getSelectedMaterial()?.name}.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-4 flex-wrap">
+                            {getSelectedMaterial()?.colors.map((color) => (
+                              <button
+                                key={color.id}
+                                className={`flex items-center gap-2 p-2 border rounded-lg transition-colors ${
+                                  formData.selectedColor === color.id
+                                    ? "border-[#18181B] bg-[#F4F4F5]"
+                                    : "border-[#E4E4E7] hover:border-[#A1A1AA]"
+                                }`}
+                                onClick={() => setFormData((prev) => ({ ...prev, selectedColor: color.id }))}
+                              >
+                                <div
+                                  className="w-5 h-5 rounded-full border border-[#E4E4E7]"
+                                  style={{ backgroundColor: color.color }}
+                                />
+                                <span className="text-[13px] text-[#18181B]">{color.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Urgent Request */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <Switch checked={needDeliveryDate} onCheckedChange={setNeedDeliveryDate} />
+                        <Switch
+                          checked={formData.isUrgent}
+                          onCheckedChange={(checked) =>
+                            setFormData((prev) => ({ ...prev, isUrgent: checked, urgentDateTime: undefined }))
+                          }
+                        />
                         <div className="flex items-center gap-1">
-                          <span className="text-[16px] text-[#18181B]">Fecha de entrega</span>
-                          <span className="text-[13px] text-[#71717A]">(Optional)</span>
+                          <span className="text-[16px] text-[#18181B]">Reserva urgente</span>
                           <Info className="h-[15px] w-[15px] text-[#71717A]" />
                         </div>
                       </div>
                     </div>
-                    <p className="text-[13px] text-[#52525B]">Selecciona la fecha de entrega deseada.</p>
 
-                    {needDeliveryDate && (
-                      <div className="flex h-8 w-[280px] rounded-md border border-[#E4E4E7]/50 shadow-sm bg-[#FAFAFA] overflow-hidden">
-                        <div className="px-2 py-1.5 flex items-center justify-center">
-                          <Calendar className="h-[15px] w-[15px] text-[#71717A]" />
-                        </div>
-                        <Separator orientation="vertical" />
-                        <input
-                          type="date"
-                          value={deliveryDate}
-                          onChange={handleDeliveryDateChange}
-                          className="flex-1 px-2 py-1.5 bg-transparent border-none outline-none text-[13px] text-[#18181B]"
-                          placeholder="DD/MM/YYYY"
+                    {formData.isUrgent ? (
+                      <div className="space-y-2">
+                        <Label className="text-[13px] text-[#52525B]">Fecha y hora deseada para el corte</Label>
+                        <Input
+                          type="datetime-local"
+                          value={formData.urgentDateTime || ""}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, urgentDateTime: e.target.value }))}
                         />
-                        <Separator orientation="vertical" />
-                        <div className="px-2 py-1.5 flex items-center justify-center">
-                          <X className="h-[15px] w-[15px] text-[#71717A]" />
-                        </div>
                       </div>
+                    ) : (
+                      <p className="text-[13px] text-[#52525B]">
+                        Te indicaremos junto al presupuesto el próximo hueco disponible.
+                      </p>
                     )}
                   </div>
-
-                  {/* Total Section */}
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-[16px] text-[#18181B]">Total</span>
-                    </div>
-                    <div className="flex h-8 w-[280px] rounded-md border border-[#E4E4E7]/50 shadow-sm bg-[#FAFAFA] overflow-hidden">
-                      <div className="px-2 py-1.5 text-[13px] text-[#71717A]">EUR</div>
-                      <Separator orientation="vertical" />
-                      <div className="flex-1 px-2 py-1.5 text-right text-[13px] text-[#18181B]">{total.toFixed(2)}</div>
-                      <Separator orientation="vertical" />
-                      <div className="px-2 py-1.5 text-center w-8 text-[13px] text-[#71717A]">€</div>
-                    </div>
-                  </div>
                 </div>
-              )}
+              </div>
 
-              {/* Footer */}
-              <div className="mt-10">
-                <Separator className="mb-4" />
+              {/* Footer - Fixed at bottom */}
+              <div className="flex-shrink-0 bg-white border-t border-[#E4E4E7] p-6">
                 <div className="flex justify-end gap-2">
-                  {currentStep === "materials" ? (
-                    <>
-                      <Button variant="outline" className="text-[13px] font-medium text-[#18181B]">
-                        Cancel
-                      </Button>
-                      <Button
-                        className="bg-[#27272A] text-[13px] font-medium text-[rgba(255,255,255,0.88)] hover:bg-[#18181B]"
-                        onClick={handleContinue}
-                      >
-                        Continuar
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="outline" className="text-[13px] font-medium text-[#18181B]" onClick={handleBack}>
-                        Volver
-                      </Button>
-                      <Button className="bg-[#27272A] text-[13px] font-medium text-[rgba(255,255,255,0.88)] hover:bg-[#18181B]">
-                        Finalizar
-                      </Button>
-                    </>
-                  )}
+                  <Button variant="outline" className="text-[13px] font-medium text-[#18181B]">
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="bg-[#27272A] text-[13px] font-medium text-[rgba(255,255,255,0.88)] hover:bg-[#18181B]"
+                    onClick={handleSubmit}
+                    disabled={!isFormValid()}
+                  >
+                    Enviar Solicitud
+                  </Button>
                 </div>
               </div>
             </div>
@@ -563,7 +626,7 @@ export default function MaterialSelectionPage() {
       </div>
 
       {isFullscreen && selectedImage !== null && (
-        <FullscreenViewer isOpen={isFullscreen} onClose={() => toggleFullscreen()} title="Nombre Servicio">
+        <FullscreenViewer isOpen={isFullscreen} onClose={() => toggleFullscreen()} title="Servicio Corte Láser">
           <div className="flex items-center justify-center h-full">
             <Image
               src={getImageSrc(selectedImage) || "/placeholder.svg"}

@@ -24,7 +24,7 @@ export function FileUpload({
   maxFiles = 5,
   maxSize = 50 * 1024 * 1024, // 50MB default
   accept = { "application/dxf": [".dxf"], "application/dwg": [".dwg"] },
-  filePrice = 21.0,
+  filePrice = 0, // Default to 0 for no price display
 }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -165,8 +165,12 @@ export function FileUpload({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[13px] text-[#52525B]">+</span>
-                <span className="text-[13px] text-[#52525B]">{filePrice.toFixed(2)}€</span>
+                {filePrice > 0 && (
+                  <>
+                    <span className="text-[13px] text-[#52525B]">+</span>
+                    <span className="text-[13px] text-[#52525B]">{filePrice.toFixed(2)}€</span>
+                  </>
+                )}
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"

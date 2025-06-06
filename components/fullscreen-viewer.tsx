@@ -13,7 +13,7 @@ interface FullscreenViewerProps {
   title?: string
 }
 
-export function FullscreenViewer({ children, isOpen, onClose, title = "Nombre Servicio" }: FullscreenViewerProps) {
+export function FullscreenViewer({ children, isOpen, onClose, title = "Servicio Corte Láser" }: FullscreenViewerProps) {
   const [zoom, setZoom] = useState(100)
 
   useEffect(() => {
