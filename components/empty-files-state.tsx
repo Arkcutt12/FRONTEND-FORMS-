@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Upload } from "lucide-react"
+import { Upload, Zap, Shield } from "lucide-react"
 
 interface EmptyFilesStateProps {
   onUploadClick: () => void
@@ -19,10 +19,26 @@ export function EmptyFilesState({ onUploadClick }: EmptyFilesStateProps) {
 
         {/* Text Content */}
         <div className="flex flex-col items-center gap-3">
-          <h3 className="text-[#333333] text-[16px] font-semibold leading-[19.2px]">No Files</h3>
-          <p className="text-[#999999] text-[13px] font-normal leading-[18.2px] text-center">
-            There are no associated files with this record.
+          <h3 className="text-[#333333] text-[16px] font-semibold leading-[19.2px]">Análisis DXF Profesional</h3>
+          <p className="text-[#999999] text-[13px] font-normal leading-[18.2px] text-center max-w-[400px]">
+            Conectado con backend especializado para análisis preciso de archivos DXF y detección de entidades fantasma.
           </p>
+        </div>
+
+        {/* Features */}
+        <div className="flex flex-col gap-2 text-center">
+          <div className="flex items-center gap-2 text-[12px] text-[#666666]">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span>Backend especializado en DXF</span>
+          </div>
+          <div className="flex items-center gap-2 text-[12px] text-[#666666]">
+            <Zap className="w-4 h-4 text-blue-600" />
+            <span>Análisis en tiempo real</span>
+          </div>
+          <div className="flex items-center gap-2 text-[12px] text-[#666666]">
+            <Upload className="w-4 h-4 text-purple-600" />
+            <span>API REST optimizada</span>
+          </div>
         </div>
 
         {/* Upload Button */}
@@ -35,7 +51,7 @@ export function EmptyFilesState({ onUploadClick }: EmptyFilesStateProps) {
             <div className="w-[14px] h-[14px] flex items-center justify-center">
               <Upload className="w-[14px] h-[14px] text-[#666666]" />
             </div>
-            <span className="text-[#666666] text-[13px] font-medium leading-[18.2px]">Upload a file</span>
+            <span className="text-[#666666] text-[13px] font-medium leading-[18.2px]">Subir archivo DXF</span>
           </Button>
         </div>
       </div>
