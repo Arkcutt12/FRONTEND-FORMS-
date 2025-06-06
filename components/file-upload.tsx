@@ -82,13 +82,25 @@ export function FileUpload({
       return
     }
 
-    setFiles([...files, ...newFiles])
+    const updatedFiles = [...files, ...newFiles]
+    setFiles(updatedFiles)
+
+    // Automatically preview the first new file
+    if (newFiles.length > 0) {
+      onPreviewFile(newFiles[0])
+    }
   }
 
   const removeFile = (index: number) => {
     const newFiles = [...files]
+    const removedFile = newFiles[index]
     newFiles.splice(index, 1)
     setFiles(newFiles)
+
+    // If we removed the currently previewed file and there are other files, preview the first one
+    if (newFiles.length > 0) {
+      onPreviewFile(newFiles[0])
+    }
   }
 
   const openFileDialog = () => {

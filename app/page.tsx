@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { X, Info, AlertCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -191,6 +191,15 @@ export default function MaterialSelectionPage() {
     return "/images/robe-detail-2.jpeg"
   }
 
+  // Auto-preview first file when files change
+  useEffect(() => {
+    if (formData.files.length > 0 && !previewFile) {
+      setPreviewFile(formData.files[0])
+    } else if (formData.files.length === 0) {
+      setPreviewFile(null)
+    }
+  }, [formData.files, previewFile])
+
   return (
     <>
       <div className="w-full h-screen bg-white flex flex-col">
@@ -227,9 +236,10 @@ export default function MaterialSelectionPage() {
                 ref={fileInputRef}
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
+                    const newFiles = [...formData.files, ...Array.from(e.target.files)]
                     setFormData((prev) => ({
                       ...prev,
-                      files: [...prev.files, ...Array.from(e.target.files)],
+                      files: newFiles,
                     }))
                   }
                 }}
