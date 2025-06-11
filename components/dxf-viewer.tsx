@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import type React from "react"
+
+import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +20,11 @@ import {
   CheckCircle,
   Zap,
   ExternalLink,
+  ZoomIn,
+  ZoomOut,
+  Move,
+  RotateCcw,
+  Maximize2,
 } from "lucide-react"
 import { FullscreenButton } from "@/components/fullscreen-button"
 import { FullscreenViewer } from "@/components/fullscreen-viewer"
@@ -45,6 +52,15 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
   const [showPhantomEntities, setShowPhantomEntities] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  // Estados para zoom y pan - valores más conservadores
+  const [zoom, setZoom] = useState(1)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
+  const [isPanning, setIsPanning] = useState(false)
+  const [panMode, setPanMode] = useState(false)
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
+  const [initialViewSet, setInitialViewSet] = useState(false)
+
   useEffect(() => {
     checkConnection()
   }, [checkConnection])
@@ -52,81 +68,217 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
   useEffect(() => {
     if (file && isConnected) {
       analyzeDxf(file)
+      // Resetear el estado de la vista inicial cuando se carga un nuevo archivo
+      setInitialViewSet(false)
+      setZoom(1)
+      setPanX(0)
+      setPanY(0)
     }
   }, [file, isConnected, analyzeDxf])
 
-  const drawVisualization = (data: typeof analysisData) => {
-    if (!data) return
+  // Función para centrar el diseño automáticamente
+  const centerDesign = useCallback(() => {
+    if (!analysisData || !canvasRef.current) return
 
     const canvas = canvasRef.current
-    if (!canvas) return
+    const bbox = analysisData.bounding_box
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    // Configurar canvas
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-
-    // Limpiar canvas
-    ctx.fillStyle = "#FAFAFA"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Calcular escala y offset para centrar el diseño
-    const bbox = data.bounding_box
-    const padding = 50
+    // Calcular el zoom para que el diseño ocupe aproximadamente el 70% de la pantalla
+    const padding = 80
     const scaleX = (canvas.width - padding * 2) / bbox.width
     const scaleY = (canvas.height - padding * 2) / bbox.height
-    const scale = Math.min(scaleX, scaleY, 5) // Limitar escala máxima
+    const optimalZoom = Math.min(scaleX, scaleY) * 0.7 // 70% del espacio disponible
 
-    const offsetX = (canvas.width - bbox.width * scale) / 2 - bbox.min_x * scale
-    const offsetY = (canvas.height - bbox.height * scale) / 2 - bbox.min_y * scale
+    // Establecer zoom y centrar
+    setZoom(optimalZoom)
+    setPanX(0) // Centrado perfecto
+    setPanY(0) // Centrado perfecto
 
-    // Dibujar entidades válidas
-    ctx.strokeStyle = "#2563EB"
-    ctx.lineWidth = 2
-    data.entities.valid.forEach((entity) => {
-      if (entity.points.length >= 2) {
-        ctx.beginPath()
-        entity.points.forEach((point, index) => {
-          const x = point.x * scale + offsetX
-          const y = canvas.height - (point.y * scale + offsetY) // Invertir Y
+    // Marcar que la vista inicial ya se ha establecido
+    setInitialViewSet(true)
+  }, [analysisData])
 
-          if (index === 0) {
-            ctx.moveTo(x, y)
-          } else {
-            ctx.lineTo(x, y)
-          }
-        })
+  // Centrar automáticamente cuando se cargan los datos
+  useEffect(() => {
+    if (analysisData && !initialViewSet) {
+      // Pequeño retraso para asegurar que el canvas está listo
+      const timer = setTimeout(() => {
+        centerDesign()
+      }, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [analysisData, initialViewSet, centerDesign])
 
-        // Cerrar polígonos si es necesario
-        if (entity.entity_type === "LWPOLYLINE" || entity.entity_type === "POLYLINE") {
-          ctx.closePath()
+  const drawVisualization = useCallback(
+    (data: typeof analysisData) => {
+      if (!data) return
+
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
+
+      // Configurar canvas
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+
+      // Limpiar canvas
+      ctx.fillStyle = "#FAFAFA"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Aplicar transformaciones - centrado exacto
+      ctx.save()
+
+      // Trasladar al centro del canvas y aplicar pan
+      ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY)
+
+      // Aplicar zoom
+      ctx.scale(zoom, zoom)
+
+      // Calcular el centro del bounding box del diseño
+      const bbox = data.bounding_box
+      const designCenterX = bbox.min_x + bbox.width / 2
+      const designCenterY = bbox.min_y + bbox.height / 2
+
+      // Trasladar para que el centro del diseño esté en el origen
+      ctx.translate(-designCenterX, designCenterY) // Invertir Y para coordenadas correctas
+
+      // Dibujar grid sutil solo si el zoom es suficiente
+      if (zoom > 0.8) {
+        ctx.strokeStyle = "#F0F0F0"
+        ctx.lineWidth = 0.5 / zoom
+        ctx.setLineDash([3 / zoom, 3 / zoom])
+
+        const gridSize = 25
+        const range = Math.max(bbox.width, bbox.height) * 0.6 // Área limitada alrededor del diseño
+        const startX = designCenterX - range
+        const endX = designCenterX + range
+        const startY = designCenterY - range
+        const endY = designCenterY + range
+
+        for (let x = Math.floor(startX / gridSize) * gridSize; x <= endX; x += gridSize) {
+          ctx.beginPath()
+          ctx.moveTo(x, startY)
+          ctx.lineTo(x, endY)
+          ctx.stroke()
         }
 
-        ctx.stroke()
+        for (let y = Math.floor(startY / gridSize) * gridSize; y <= endY; y += gridSize) {
+          ctx.beginPath()
+          ctx.moveTo(startX, y)
+          ctx.lineTo(endX, y)
+          ctx.stroke()
+        }
+        ctx.setLineDash([])
       }
-    })
 
-    // Dibujar bounding box
-    ctx.strokeStyle = "#10B981"
-    ctx.lineWidth = 1
-    ctx.setLineDash([5, 5])
-    ctx.strokeRect(
-      bbox.min_x * scale + offsetX,
-      canvas.height - (bbox.max_y * scale + offsetY),
-      bbox.width * scale,
-      bbox.height * scale,
-    )
-    ctx.setLineDash([])
-  }
+      // Dibujar entidades válidas - vectores azules
+      ctx.strokeStyle = "#2563EB"
+      ctx.lineWidth = 1.5 / zoom
+      ctx.lineCap = "round"
+      ctx.lineJoin = "round"
 
-  // Redibujar cuando cambien los datos
+      data.entities.valid.forEach((entity) => {
+        if (entity.points.length >= 2) {
+          ctx.beginPath()
+          entity.points.forEach((point, index) => {
+            if (index === 0) {
+              ctx.moveTo(point.x, -point.y) // Invertir Y para coordenadas correctas
+            } else {
+              ctx.lineTo(point.x, -point.y)
+            }
+          })
+
+          // Cerrar polígonos si es necesario
+          if (entity.entity_type === "LWPOLYLINE" || entity.entity_type === "POLYLINE") {
+            ctx.closePath()
+          }
+
+          ctx.stroke()
+        }
+      })
+
+      // Dibujar bounding box sutil
+      ctx.strokeStyle = "#10B981"
+      ctx.lineWidth = 0.8 / zoom
+      ctx.setLineDash([4 / zoom, 4 / zoom])
+      ctx.strokeRect(bbox.min_x, -bbox.max_y, bbox.width, bbox.height)
+      ctx.setLineDash([])
+
+      // Punto central de referencia (muy sutil)
+      if (zoom > 1.5) {
+        ctx.fillStyle = "#EF4444"
+        ctx.beginPath()
+        ctx.arc(designCenterX, -designCenterY, 2 / zoom, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      ctx.restore()
+    },
+    [zoom, panX, panY],
+  )
+
+  // Redibujar cuando cambien los datos o las transformaciones
   useEffect(() => {
     if (analysisData) {
       drawVisualization(analysisData)
     }
-  }, [analysisData])
+  }, [analysisData, drawVisualization])
+
+  // Funciones de zoom con límites más conservadores
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(prev * 1.15, 5)) // Límite máximo más bajo
+  }
+
+  const handleZoomOut = () => {
+    setZoom((prev) => Math.max(prev / 1.15, 0.2)) // Límite mínimo más alto
+  }
+
+  const handleResetView = () => {
+    centerDesign() // Usar la función de centrado en lugar de resetear a 1
+  }
+
+  const handleFitToView = () => {
+    centerDesign()
+  }
+
+  // Manejo de eventos del mouse con límites de pan
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (panMode) {
+      setIsPanning(true)
+      setLastMousePos({ x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning && panMode && analysisData) {
+      const deltaX = e.clientX - lastMousePos.x
+      const deltaY = e.clientY - lastMousePos.y
+
+      // Limitar el pan para que no se aleje demasiado del diseño
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const bbox = analysisData.bounding_box
+      const maxPan = Math.max(bbox.width, bbox.height) * zoom * 0.5 // Límite basado en el tamaño del diseño
+
+      setPanX((prev) => Math.max(-maxPan, Math.min(maxPan, prev + deltaX)))
+      setPanY((prev) => Math.max(-maxPan, Math.min(maxPan, prev + deltaY)))
+
+      setLastMousePos({ x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsPanning(false)
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.92 : 1.08 // Zoom más suave
+    setZoom((prev) => Math.max(0.2, Math.min(5, prev * delta)))
+  }
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes"
@@ -185,6 +337,8 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen)
+    // Resetear la vista inicial cuando se cambia a pantalla completa
+    setInitialViewSet(false)
   }
 
   const qualityInfo = getQualityStatus()
@@ -231,6 +385,53 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     <>
       <div className="relative w-full h-full bg-[#FAFAFA] rounded-lg overflow-hidden">
         <FullscreenButton onClick={toggleFullscreen} />
+
+        {/* Controles de zoom y navegación */}
+        {analysisData && (
+          <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
+            <div className="bg-white rounded-lg shadow-md p-2 flex flex-col gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleZoomIn} title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleZoomOut} title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={panMode ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPanMode(!panMode)}
+                title="Modo Pan"
+              >
+                <Move className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleFitToView}
+                title="Centrar Diseño"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleResetView} title="Reset Vista">
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Indicador de zoom */}
+            <div className="bg-white rounded-lg shadow-md px-3 py-1">
+              <span className="text-xs font-medium text-gray-600">{Math.round(zoom * 100)}%</span>
+            </div>
+
+            {/* Indicador de modo pan */}
+            {panMode && (
+              <div className="bg-blue-100 border border-blue-200 rounded-lg px-3 py-1">
+                <span className="text-xs font-medium text-blue-700">Modo Pan Activo</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Controles superiores */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -443,7 +644,27 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </div>
         )}
 
-        {/* Estado de conexión API */}
+        {/* Instrucciones de navegación simplificadas */}
+        {analysisData && (
+          <div className="absolute bottom-4 left-4 z-10">
+            <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md p-3 max-w-xs">
+              <h4 className="text-xs font-medium text-gray-800 mb-2">Navegación Centrada:</h4>
+              <div className="space-y-1 text-xs text-gray-600">
+                <div>
+                  • <strong>Scroll:</strong> Zoom preciso
+                </div>
+                <div>
+                  • <strong>Pan:</strong> Movimiento limitado
+                </div>
+                <div>
+                  • <strong>Centrar:</strong> Volver al centro
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Estados de carga y error */}
         {!isConnected && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/90">
             <div className="bg-white p-6 rounded-lg shadow-md max-w-md text-center">
@@ -462,7 +683,6 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </div>
         )}
 
-        {/* Loading */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/80">
             <div className="flex flex-col items-center">
@@ -478,7 +698,6 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/90">
             <div className="bg-white p-6 rounded-lg shadow-md max-w-md">
@@ -495,11 +714,16 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </div>
         )}
 
-        {/* Canvas de visualización */}
+        {/* Canvas de visualización con eventos de mouse */}
         <canvas
           ref={canvasRef}
-          className="w-full h-full"
+          className={`w-full h-full ${panMode ? "cursor-grab" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
           style={{ display: analysisData && !isLoading && !error ? "block" : "none" }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
         />
 
         {/* Estado inicial */}
@@ -517,14 +741,19 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
         )}
       </div>
 
-      {/* Fullscreen viewer */}
+      {/* Fullscreen viewer con las mismas funcionalidades */}
       {isFullscreen && (
         <FullscreenViewer isOpen={isFullscreen} onClose={toggleFullscreen} title={file?.name || "DXF Viewer"}>
           <div className="w-full h-full flex items-center justify-center">
             <canvas
               ref={canvasRef}
-              className="max-w-full max-h-full"
+              className={`max-w-full max-h-full ${panMode ? "cursor-grab" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
               style={{ display: analysisData ? "block" : "none" }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
             />
           </div>
         </FullscreenViewer>
