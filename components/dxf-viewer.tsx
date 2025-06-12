@@ -4,21 +4,14 @@ import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
 import {
   X,
   Upload,
   Eye,
   EyeOff,
-  BarChart3,
   PieChart,
   Download,
   AlertTriangle,
-  CheckCircle,
-  Zap,
   ExternalLink,
   ZoomIn,
   ZoomOut,
@@ -28,6 +21,7 @@ import {
 } from "lucide-react"
 import { FullscreenButton } from "@/components/fullscreen-button"
 import { FullscreenViewer } from "@/components/fullscreen-viewer"
+import { DXFInfoCard } from "@/components/dxf-info-card"
 import { useDXFAnalysis } from "@/hooks/use-dxf-analysis"
 import { apiClient } from "@/lib/api-client"
 
@@ -45,6 +39,7 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     analyzeDxf,
     checkConnection,
     clearError,
+    errorAnalysis, // Datos del nuevo backend
   } = useDXFAnalysis()
 
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -288,37 +283,6 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const getQualityStatus = () => {
-    if (!analysisData) return { status: "unknown", color: "text-gray-600", icon: AlertTriangle, label: "Sin datos" }
-
-    const totalFiltered = analysisData.statistics.phantom_entities
-    const phantomCount = analysisData.statistics.phantom_entities
-
-    if (totalFiltered === 0)
-      return {
-        status: "excellent",
-        color: "text-green-600",
-        bgColor: "bg-green-50 border-green-200",
-        icon: CheckCircle,
-        label: "Diseño Perfecto",
-      }
-    if (phantomCount < 3)
-      return {
-        status: "good",
-        color: "text-blue-600",
-        bgColor: "bg-blue-50 border-blue-200",
-        icon: Zap,
-        label: "Diseño Limpio",
-      }
-    return {
-      status: "filtered",
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50 border-yellow-200",
-      icon: AlertTriangle,
-      label: "Artefactos Filtrados",
-    }
-  }
-
   const exportResults = () => {
     if (!analysisData) return
 
@@ -341,45 +305,58 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     setInitialViewSet(false)
   }
 
-  const qualityInfo = getQualityStatus()
+  // Convertir datos de analysisData a DXFMetrics para DXFInfoCard
+  const convertToMetrics = () => {
+    if (!analysisData) return null
 
-  // Función para agrupar entidades por capas
-  const groupEntitiesByLayer = (
-    entities: Array<{ entity_type: string; layer: string; length: number; points: Array<{ x: number; y: number }> }>,
-  ) => {
-    const layerMap = new Map<
-      string,
-      {
-        name: string
-        entityCount: number
-        totalLength: number
-        entities: typeof entities
-        entityTypes: Set<string>
-      }
-    >()
-
-    entities.forEach((entity) => {
-      const layerName = entity.layer || "0" // Default layer
-
-      if (!layerMap.has(layerName)) {
-        layerMap.set(layerName, {
-          name: layerName,
-          entityCount: 0,
-          totalLength: 0,
-          entities: [],
-          entityTypes: new Set(),
-        })
-      }
-
-      const layer = layerMap.get(layerName)!
-      layer.entityCount++
-      layer.totalLength += entity.length
-      layer.entities.push(entity)
-      layer.entityTypes.add(entity.entity_type)
-    })
-
-    return Array.from(layerMap.values()).sort((a, b) => b.entityCount - a.entityCount)
+    return {
+      totalLayers: 1,
+      totalVectors: analysisData.statistics.valid_entities,
+      totalLength: analysisData.cut_length.total_mm,
+      usableMaterialArea: analysisData.bounding_box.area,
+      boundingBox: {
+        width: analysisData.bounding_box.width,
+        height: analysisData.bounding_box.height,
+        minX: analysisData.bounding_box.min_x,
+        maxX: analysisData.bounding_box.max_x,
+        minY: analysisData.bounding_box.min_y,
+        maxY: analysisData.bounding_box.max_y,
+      },
+      layersWithVectors: analysisData.entities.valid.reduce((acc, entity) => {
+        const existingLayer = acc.find((layer) => layer.name === entity.layer)
+        if (existingLayer) {
+          existingLayer.vectorCount++
+          existingLayer.totalLength += entity.length
+        } else {
+          acc.push({
+            name: entity.layer,
+            entities: [],
+            vectorCount: 1,
+            totalLength: entity.length,
+            isHidden: false,
+          })
+        }
+        return acc
+      }, [] as any[]),
+      filteredEntities: {
+        suspiciousLines: 0,
+        hiddenLayers: 0,
+        zeroLength: 0,
+        outOfBounds: 0,
+        phantomEntities: analysisData.statistics.phantom_entities,
+        geometricInconsistent: 0,
+        clusterOutliers: 0,
+      },
+      designStatistics: {
+        centerX: analysisData.bounding_box.min_x + analysisData.bounding_box.width / 2,
+        centerY: analysisData.bounding_box.min_y + analysisData.bounding_box.height / 2,
+        maxDimension: Math.max(analysisData.bounding_box.width, analysisData.bounding_box.height),
+        entityDensity: analysisData.statistics.valid_entities / analysisData.bounding_box.area,
+      },
+    }
   }
+
+  const metrics = convertToMetrics()
 
   return (
     <>
@@ -480,167 +457,14 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </Button>
         </div>
 
-        {/* Panel de información */}
-        {analysisData && (
+        {/* Panel de información - usando DXFInfoCard con datos del nuevo backend */}
+        {metrics && (
           <div className="absolute top-4 left-16 z-10 w-80">
-            <Card className="bg-white shadow-lg border border-[#E4E4E7]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-[14px] font-medium text-[#18181B] flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-[#52525B]" />
-                  Análisis DXF Profesional
-                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
-                    API
-                  </Badge>
-                </CardTitle>
-                {file && (
-                  <p className="text-[12px] text-[#71717A] truncate" title={file.name}>
-                    {file.name} ({formatFileSize(file.size)})
-                  </p>
-                )}
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Estado de calidad */}
-                <div className={`p-3 rounded-md border ${qualityInfo.bgColor}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <qualityInfo.icon className={`h-4 w-4 ${qualityInfo.color}`} />
-                    <h4 className={`text-[12px] font-medium ${qualityInfo.color}`}>{qualityInfo.label}</h4>
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                      {Math.round(
-                        (analysisData.statistics.valid_entities / analysisData.statistics.total_entities) * 100 || 0,
-                      )}
-                      %
-                    </Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] text-gray-600">Entidades válidas</span>
-                      <span className={`text-[11px] font-medium ${qualityInfo.color}`}>
-                        {analysisData.statistics.valid_entities} / {analysisData.statistics.total_entities}
-                      </span>
-                    </div>
-                    <Progress
-                      value={(analysisData.statistics.valid_entities / analysisData.statistics.total_entities) * 100}
-                      className="h-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Métricas principales */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-2 bg-[#FAFAFA] rounded-md">
-                    <p className="text-[11px] text-[#71717A]">Longitud Corte</p>
-                    <p className="text-[13px] font-medium text-[#18181B]">
-                      {analysisData.cut_length.total_m.toFixed(2)} m
-                    </p>
-                    <p className="text-[10px] text-[#A1A1AA]">{analysisData.cut_length.total_mm.toFixed(0)} mm</p>
-                  </div>
-                  <div className="p-2 bg-[#FAFAFA] rounded-md">
-                    <p className="text-[11px] text-[#71717A]">Capas Activas</p>
-                    <p className="text-[13px] font-medium text-[#18181B]">
-                      {groupEntitiesByLayer(analysisData.entities.valid).length}
-                    </p>
-                    <p className="text-[10px] text-[#A1A1AA]">{analysisData.statistics.valid_entities} entidades</p>
-                  </div>
-                </div>
-
-                {/* Dimensiones */}
-                <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
-                  <h4 className="text-[12px] font-medium text-blue-900 mb-2">Dimensiones Precisas</h4>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-blue-700">Ancho:</span>
-                      <span className="font-medium text-blue-900 ml-1">
-                        {analysisData.bounding_box.width.toFixed(1)} mm
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Alto:</span>
-                      <span className="font-medium text-blue-900 ml-1">
-                        {analysisData.bounding_box.height.toFixed(1)} mm
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-blue-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-blue-700">Coordenadas:</span>
-                      <span className="text-[10px] font-medium text-blue-900">
-                        ({analysisData.bounding_box.min_x.toFixed(1)}, {analysisData.bounding_box.min_y.toFixed(1)}) → (
-                        {analysisData.bounding_box.max_x.toFixed(1)}, {analysisData.bounding_box.max_y.toFixed(1)})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Capas del archivo */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[13px] font-medium text-[#18181B]">Capas del Archivo</h4>
-                    <Badge variant="secondary" className="text-[11px] h-5">
-                      {groupEntitiesByLayer(analysisData.entities.valid).length}
-                    </Badge>
-                  </div>
-
-                  {showValidEntities && (
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {groupEntitiesByLayer(analysisData.entities.valid)
-                        .slice(0, 6)
-                        .map((layer, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-[#FAFAFA] rounded-md">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-medium text-[#18181B] truncate">{layer.name}</p>
-                              <p className="text-[10px] text-[#71717A]">
-                                {layer.entityCount} entidades • {layer.totalLength.toFixed(1)}mm
-                              </p>
-                              <p className="text-[9px] text-[#A1A1AA]">{Array.from(layer.entityTypes).join(", ")}</p>
-                            </div>
-                          </div>
-                        ))}
-                      {groupEntitiesByLayer(analysisData.entities.valid).length > 6 && (
-                        <p className="text-[11px] text-[#71717A] text-center">
-                          +{groupEntitiesByLayer(analysisData.entities.valid).length - 6} capas más...
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Entidades fantasma */}
-                {analysisData.statistics.phantom_entities > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[13px] font-medium text-[#18181B]">Entidades Fantasma</h4>
-                      <Badge variant="destructive" className="text-[11px] h-5">
-                        {analysisData.statistics.phantom_entities}
-                      </Badge>
-                    </div>
-
-                    {showPhantomEntities && (
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {analysisData.entities.phantom.slice(0, 3).map((entity, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-red-50 rounded-md">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-medium text-red-900 truncate">{entity.entity_type}</p>
-                              <p className="text-[10px] text-red-700 italic">{entity.rejection_reason}</p>
-                              <p className="text-[10px] text-red-600">
-                                {entity.layer} • {entity.length.toFixed(1)}mm
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                        {analysisData.entities.phantom.length > 3 && (
-                          <p className="text-[11px] text-red-600 text-center">
-                            +{analysisData.entities.phantom.length - 3} más filtradas...
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <DXFInfoCard
+              metrics={metrics}
+              fileName={file?.name}
+              errorAnalysis={errorAnalysis} // Pasar datos del nuevo backend
+            />
           </div>
         )}
 
