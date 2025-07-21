@@ -67,11 +67,16 @@ export function PaymentGateway({ total, onBack, onComplete }: PaymentGatewayProp
       <div className="bg-white border-b border-[#E4E4E7]">
         <div className="flex justify-between items-center px-4 py-3">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="rounded-md" onClick={onBack}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-md"
+              onClick={() => (window.location.href = "https://www.arkcutt.com/")}
+            >
               <ArrowLeft className="h-[15px] w-[15px] text-[#52525B]" />
             </Button>
             <div className="bg-[#FAFAFA] px-1 py-0.5 rounded text-xs font-medium text-[#52525B] border border-[#E4E4E7]">
-              esc
+              volver
             </div>
           </div>
           <div className="text-[13px] font-medium text-[#52525B]">Pago Seguro</div>
@@ -272,7 +277,11 @@ export function PaymentGateway({ total, onBack, onComplete }: PaymentGatewayProp
           <div>
             <Separator className="mb-4" />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" className="text-[13px] font-medium text-[#18181B]" onClick={onBack}>
+              <Button
+                variant="outline"
+                className="text-[13px] font-medium text-[#18181B] bg-transparent"
+                onClick={onBack}
+              >
                 Volver
               </Button>
               <Button

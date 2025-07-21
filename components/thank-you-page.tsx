@@ -1,6 +1,18 @@
 "use client"
 
-import { CheckCircle, FileText, Mail, Phone, MapPin, Package, Clock, ArrowRight, Download, Share2 } from "lucide-react"
+import {
+  CheckCircle,
+  FileText,
+  Mail,
+  Phone,
+  MapPin,
+  Package,
+  Clock,
+  ArrowRight,
+  Download,
+  Share2,
+  ArrowLeft,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -91,11 +103,32 @@ export function ThankYouPage({ personalData, formData, onClose }: ThankYouPagePr
     }
   }
 
+  const handleEmailSupport = () => {
+    window.location.href = `mailto:info@arkcutt.com?subject=Consulta sobre solicitud ${requestNumber}&body=Hola,%0D%0A%0D%0ATengo una consulta sobre mi solicitud número ${requestNumber}.%0D%0A%0D%0AGracias.`
+  }
+
+  const handlePhoneSupport = () => {
+    window.location.href = "tel:+34677649458"
+  }
+
   return (
     <div className="w-full h-full flex flex-col bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
       <div className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-[#E4E4E7]">
         <div className="flex justify-between items-center px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-md"
+              onClick={() => (window.location.href = "https://www.arkcutt.com/")}
+            >
+              <ArrowLeft className="h-[15px] w-[15px] text-[#52525B]" />
+            </Button>
+            <div className="bg-[#FAFAFA] px-1 py-0.5 rounded text-xs font-medium text-[#52525B] border border-[#E4E4E7]">
+              volver
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -313,11 +346,11 @@ export function ThankYouPage({ personalData, formData, onClose }: ThankYouPagePr
                   Si tienes alguna pregunta sobre tu solicitud, no dudes en contactarnos
                 </p>
                 <div className="flex justify-center gap-3">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleEmailSupport}>
                     <Mail className="h-4 w-4 mr-2" />
                     Email
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handlePhoneSupport}>
                     <Phone className="h-4 w-4 mr-2" />
                     Teléfono
                   </Button>

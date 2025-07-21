@@ -5,7 +5,7 @@ import type React from "react"
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
-  X,
+  ArrowLeft,
   Upload,
   Eye,
   EyeOff,
@@ -367,10 +367,22 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
         {analysisData && (
           <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
             <div className="bg-white rounded-lg shadow-md p-2 flex flex-col gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleZoomIn} title="Zoom In">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 bg-transparent"
+                onClick={handleZoomIn}
+                title="Zoom In"
+              >
                 <ZoomIn className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleZoomOut} title="Zoom Out">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 bg-transparent"
+                onClick={handleZoomOut}
+                title="Zoom Out"
+              >
                 <ZoomOut className="h-4 w-4" />
               </Button>
               <Button
@@ -385,13 +397,19 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 bg-transparent"
                 onClick={handleFitToView}
                 title="Centrar Diseño"
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleResetView} title="Reset Vista">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 bg-transparent"
+                onClick={handleResetView}
+                title="Reset Vista"
+              >
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
@@ -452,8 +470,8 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
               </Button>
             </>
           )}
-          <Button variant="outline" size="icon" className="bg-white shadow-md" onClick={onClose} title="Cerrar">
-            <X className="h-4 w-4" />
+          <Button variant="outline" size="icon" className="bg-white shadow-md" onClick={onClose} title="Volver">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </div>
 

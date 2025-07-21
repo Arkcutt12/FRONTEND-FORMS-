@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
-import { X, Minus, Plus, RotateCcw } from "lucide-react"
+import { ArrowLeft, Minus, Plus, RotateCcw } from "lucide-react"
 import { ArrowsReduceDiagonal } from "@medusajs/icons"
 import Image from "next/image"
 
@@ -55,22 +55,22 @@ export function FullscreenViewer({ children, isOpen, onClose, title = "Servicio 
         <div className="flex justify-between items-center px-4 py-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="rounded-md" onClick={onClose}>
-              <X className="h-[15px] w-[15px] text-[#52525B]" />
+              <ArrowLeft className="h-[15px] w-[15px] text-[#52525B]" />
             </Button>
             <div className="bg-[#FAFAFA] px-1 py-0.5 rounded text-xs font-medium text-[#52525B] border border-[#E4E4E7]">
-              esc
+              volver
             </div>
           </div>
           <div className="text-[13px] font-medium text-[#52525B]">{title}</div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={handleZoomOut}>
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md bg-transparent" onClick={handleZoomOut}>
               <Minus className="h-[15px] w-[15px]" />
             </Button>
             <div className="text-[13px] font-medium text-[#52525B]">{zoom}%</div>
-            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={handleZoomIn}>
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md bg-transparent" onClick={handleZoomIn}>
               <Plus className="h-[15px] w-[15px]" />
             </Button>
-            <Button variant="outline" className="rounded-xl px-3 h-10 text-[13px] font-medium">
+            <Button variant="outline" className="rounded-xl px-3 h-10 text-[13px] font-medium bg-transparent">
               Edit Mode
             </Button>
           </div>
