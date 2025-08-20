@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef } from "react"
-import { Upload, Trash2, FileIcon, Eye } from "lucide-react"
+import { Upload, Trash2, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -109,12 +109,6 @@ export function FileUpload({
     }
   }
 
-  const getFileNameWithoutExtension = (fileName: string) => {
-    const lastDotIndex = fileName.lastIndexOf(".")
-    if (lastDotIndex === -1) return fileName
-    return fileName.substring(0, lastDotIndex)
-  }
-
   const getFileExtension = (fileName: string) => {
     const lastDotIndex = fileName.lastIndexOf(".")
     if (lastDotIndex === -1) return ""
@@ -161,54 +155,55 @@ export function FileUpload({
       {files.length > 0 && (
         <div className="space-y-2">
           {files.map((file, index) => (
-            <div key={index} className="px-3 py-2 bg-[#FAFAFA] shadow-sm rounded-lg flex justify-between items-center">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-6 h-8 bg-white shadow-[0px_0px_0px_1px_rgba(0,0,0,0.08)] rounded flex items-center justify-center">
-                  <FileIcon className="w-4 h-4 text-[#52525B]" />
+            <div key={index} className="relative">
+              {/* Main file status bar with exact styling from your design */}
+              <div
+                className="w-full bg-[#E0F5FF] border border-[#2580AD] h-[37px] flex items-center justify-center px-[90px] py-[5px] gap-[2px] text-center"
+                style={{ fontFamily: "TWK Lausanne, sans-serif" }}
+              >
+                <div className="w-5 h-5 relative overflow-hidden flex-shrink-0">
+                  <img
+                    src="/icons/check.svg"
+                    alt="Check"
+                    className="absolute h-[67%] w-[67%] top-[8.09%] right-[16.59%] bottom-[24.91%] left-[16.41%] max-w-full max-h-full object-contain"
+                  />
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center">
-                    <span className="text-[13px] font-medium text-[#18181B]">
-                      {getFileNameWithoutExtension(file.name)}
-                    </span>
-                    <span className="text-[13px] text-[#52525B]">{getFileExtension(file.name)}</span>
-                  </div>
-                  <span className="text-[11px] text-[#71717A]">{formatFileSize(file.size)}</span>
+                <div className="w-[120px] relative leading-6 flex items-center justify-center flex-shrink-0 text-xs text-[#297AA3]">
+                  Archivo {getFileExtension(file.name)} subido {index + 1}/{files.length}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {filePrice > 0 && (
-                  <>
-                    <span className="text-[13px] text-[#52525B]">+</span>
-                    <span className="text-[13px] text-[#52525B]">{filePrice.toFixed(2)}€</span>
-                  </>
-                )}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md hover:bg-blue-50 hover:text-blue-500 transition-colors"
-                    onClick={() => onPreviewFile(file)}
-                    title="Previsualizar archivo"
-                  >
-                    <Eye className="h-[15px] w-[15px] text-[#52525B]" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md hover:bg-red-50 hover:text-red-500 transition-colors"
-                    onClick={() => removeFile(index)}
-                    title="Eliminar archivo"
-                  >
-                    <Trash2 className="h-[15px] w-[15px] text-[#52525B]" />
-                  </Button>
-                </div>
+
+              {/* Action buttons positioned absolutely in top right */}
+              <div className="absolute top-1 right-2 flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-md hover:bg-blue-50 hover:text-blue-500 transition-colors"
+                  onClick={() => onPreviewFile(file)}
+                  title="Previsualizar archivo"
+                >
+                  <Eye className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded-md hover:bg-red-50 hover:text-red-500 transition-colors"
+                  onClick={() => removeFile(index)}
+                  title="Eliminar archivo"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+
+              {/* File details below the status bar */}
+              <div className="mt-1 px-2 text-xs text-gray-500">
+                {file.name} • {formatFileSize(file.size)}
               </div>
             </div>
           ))}
 
-          <Button onClick={openFileDialog} variant="outline" className="w-full mt-2 text-[13px] font-medium">
-            <Upload className="h-[15px] w-[15px] mr-2" />
+          <Button onClick={openFileDialog} variant="outline" className="w-full mt-4 text-sm font-medium bg-transparent">
+            <Upload className="h-4 w-4 mr-2" />
             Añadir más archivos
           </Button>
         </div>
