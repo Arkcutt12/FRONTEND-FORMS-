@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ArrowLeft, Info, AlertCircle, ChevronDown } from "lucide-react"
+import { Info, AlertCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 import { OrderSummary } from "@/components/order-summary"
 import { ThankYouPage } from "@/components/thank-you-page"
+import { LocationSelector } from "@/components/location-selector"
 
 interface Material {
   id: string
@@ -26,9 +27,17 @@ interface Material {
   colors: { id: string; name: string; color: string }[]
 }
 
+interface LocationData {
+  address: string
+  city: string
+  postalCode: string
+  phone: string
+}
+
 interface FormData {
   files: File[]
   city: string
+  locationData?: LocationData
   materialProvider: "client" | "arkcutt"
   clientMaterial?: {
     deliveryDate: string
@@ -198,6 +207,19 @@ export default function MaterialSelectionPage() {
   const isFormValid = () => {
     if (formData.files.length === 0) return false
     if (!formData.city) return false
+
+    // Validate home delivery data if selected
+    if (formData.city === "home") {
+      if (
+        !formData.locationData?.address ||
+        !formData.locationData?.city ||
+        !formData.locationData?.postalCode ||
+        !formData.locationData?.phone
+      ) {
+        return false
+      }
+    }
+
     if (!formData.materialProvider) return false
 
     if (formData.materialProvider === "client") {
@@ -262,30 +284,7 @@ export default function MaterialSelectionPage() {
           {/* Show Main Form */}
           {!showOrderSummary && !showRequestSuccess && (
             <>
-              {/* Header */}
-              <div className="bg-white flex-shrink-0">
-                <div className="flex justify-between items-center px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-md"
-                      onClick={() => (window.location.href = "https://www.arkcutt.com/")}
-                    >
-                      <ArrowLeft className="h-[15px] w-[15px] text-[#52525B]" />
-                    </Button>
-                    <div className="bg-[#FAFAFA] px-1 py-0.5 rounded text-xs font-medium text-[#52525B] border border-[#E4E4E7]">
-                      volver
-                    </div>
-                  </div>
-                  <div className="text-[13px] font-medium text-[#52525B]">Servicio Corte Láser</div>
-                  <Button variant="outline" className="rounded-xl px-3 h-10 text-[13px] font-medium bg-transparent">
-                    Arkcutt
-                  </Button>
-                </div>
-                <Separator />
-              </div>
-
+              {/* Gallery Section or DXF Viewer - Fixed height */}
               <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                 {/* Gallery Section or DXF Viewer - Fixed height */}
                 <div className="flex-1 bg-[#FAFAFA] relative overflow-hidden">
@@ -341,40 +340,22 @@ export default function MaterialSelectionPage() {
                         />
                       </div>
 
-                      {/* Keep all other existing form sections exactly as they are */}
-                      {/* City Selection, Material Provider Selection, etc. */}
-                      {/* ... (all existing form content) ... */}
-                      {/* City Selection */}
+                      {/* Location Selection */}
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-[16px] text-[#18181B]">Ciudad</span>
+                            <span className="text-[16px] text-[#18181B]">Ubicación</span>
                             <Info className="h-[15px] w-[15px] text-[#71717A]" />
                           </div>
                           <p className="text-[13px] text-[#52525B]">Selecciona dónde quieres realizar el corte.</p>
                         </div>
 
-                        <RadioGroup
-                          value={formData.city}
-                          onValueChange={(value) => setFormData((prev) => ({ ...prev, city: value }))}
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            {cities.map((city) => (
-                              <div
-                                key={city.id}
-                                className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg"
-                              >
-                                <RadioGroupItem value={city.id} id={city.id} />
-                                <Label
-                                  htmlFor={city.id}
-                                  className="text-[13px] font-medium text-[#18181B] cursor-pointer"
-                                >
-                                  {city.name}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                        </RadioGroup>
+                        <LocationSelector
+                          selectedCity={formData.city}
+                          locationData={formData.locationData}
+                          onCityChange={(city) => setFormData((prev) => ({ ...prev, city }))}
+                          onLocationDataChange={(locationData) => setFormData((prev) => ({ ...prev, locationData }))}
+                        />
                       </div>
 
                       {/* Material Provider Selection */}
