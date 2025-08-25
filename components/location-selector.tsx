@@ -82,8 +82,6 @@ export function LocationSelector({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-[14px] font-medium text-[#18181B]">Ubicación</Label>
-
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Button
@@ -91,7 +89,7 @@ export function LocationSelector({
               className="w-full justify-between h-12 bg-white text-left"
               onClick={() => setIsOpen(!isOpen)}
             >
-              <span className="text-[14px] text-[#18181B]">
+              <span className="text-[14px] text-[#18181B] font-normal">
                 {selectedCityData ? selectedCityData.name : "Seleccionar ubicación"}
               </span>
               <ChevronDown className="h-4 w-4 text-[#52525B]" />
@@ -119,7 +117,7 @@ export function LocationSelector({
           {selectedCity && selectedCity !== "home" && selectedCityData && (
             <Button
               variant="outline"
-              className="h-12 px-4 bg-white text-[14px] text-[#18181B] whitespace-nowrap"
+              className="h-12 px-4 bg-white text-[14px] text-[#18181B] whitespace-nowrap font-normal"
               onClick={() => window.open(selectedCityData.googleMapsUrl!, "_blank")}
             >
               Ver en el Mapa

@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Info, AlertCircle, ChevronDown } from "lucide-react"
+import { Info, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { FileUpload } from "@/components/file-upload"
@@ -17,6 +16,7 @@ import Image from "next/image"
 import { OrderSummary } from "@/components/order-summary"
 import { ThankYouPage } from "@/components/thank-you-page"
 import { LocationSelector } from "@/components/location-selector"
+import { MaterialSelector } from "@/components/material-selector"
 
 interface Material {
   id: string
@@ -317,7 +317,23 @@ export default function MaterialSelectionPage() {
                 <div className="w-full md:w-[560px] bg-white flex flex-col overflow-hidden">
                   <div className="flex-1 overflow-y-auto">
                     <div className="p-6 space-y-8">
-                      {/* All the existing form sections remain the same */}
+                      <div className="space-y-[10px]">
+                        <Image
+                          src="/images/form-header.png"
+                          alt="Completa el formulario"
+                          width={434}
+                          height={250}
+                          className="w-[434px] h-[250px] object-contain"
+                        />
+                        <Image
+                          src="/images/form-subtitle.png"
+                          alt="Criterios de pedido"
+                          width={434}
+                          height={24}
+                          className="w-[434px] h-[24px] object-contain"
+                        />
+                      </div>
+
                       {/* File Upload Section */}
                       <div className="space-y-4">
                         <div className="space-y-1">
@@ -340,24 +356,6 @@ export default function MaterialSelectionPage() {
                         />
                       </div>
 
-                      {/* Location Selection */}
-                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[16px] text-[#18181B]">Ubicación</span>
-                            <Info className="h-[15px] w-[15px] text-[#71717A]" />
-                          </div>
-                          <p className="text-[13px] text-[#52525B]">Selecciona dónde quieres realizar el corte.</p>
-                        </div>
-
-                        <LocationSelector
-                          selectedCity={formData.city}
-                          locationData={formData.locationData}
-                          onCityChange={(city) => setFormData((prev) => ({ ...prev, city }))}
-                          onLocationDataChange={(locationData) => setFormData((prev) => ({ ...prev, locationData }))}
-                        />
-                      </div>
-
                       {/* Material Provider Selection */}
                       <div className="space-y-4">
                         <div className="space-y-1">
@@ -368,37 +366,61 @@ export default function MaterialSelectionPage() {
                           <p className="text-[13px] text-[#52525B]">¿Quién proporcionará el material?</p>
                         </div>
 
-                        <RadioGroup
-                          value={formData.materialProvider}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              materialProvider: value as "client" | "arkcutt",
-                              clientMaterial: undefined,
-                              selectedMaterial: undefined,
-                              selectedThickness: undefined,
-                              selectedColor: undefined,
-                            }))
-                          }
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg">
-                              <RadioGroupItem value="client" id="client" />
-                              <Label htmlFor="client" className="text-[13px] font-medium text-[#18181B] cursor-pointer">
-                                Yo proporcionaré el material
-                              </Label>
-                            </div>
-                            <div className="flex items-center gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg">
-                              <RadioGroupItem value="arkcutt" id="arkcutt" />
-                              <Label
-                                htmlFor="arkcutt"
-                                className="text-[13px] font-medium text-[#18181B] cursor-pointer"
-                              >
-                                Arkcutt proporcionará el material
-                              </Label>
-                            </div>
-                          </div>
-                        </RadioGroup>
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                materialProvider: "arkcutt",
+                                clientMaterial: undefined,
+                                selectedMaterial: undefined,
+                                selectedThickness: undefined,
+                                selectedColor: undefined,
+                              }))
+                            }
+                            className="w-full"
+                          >
+                            <Image
+                              src={
+                                formData.materialProvider === "arkcutt"
+                                  ? "/images/arkcutt-button-selected.png"
+                                  : "/images/arkcutt-button.png"
+                              }
+                              alt="Arkcutt proporcionará el material"
+                              width={434}
+                              height={124}
+                              className="w-[434px] h-[124px] object-contain"
+                            />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                materialProvider: "client",
+                                clientMaterial: undefined,
+                                selectedMaterial: undefined,
+                                selectedThickness: undefined,
+                                selectedColor: undefined,
+                              }))
+                            }
+                            className="w-full"
+                          >
+                            <Image
+                              src={
+                                formData.materialProvider === "client"
+                                  ? "/images/client-button-selected.png"
+                                  : "/images/client-button.png"
+                              }
+                              alt="Yo proporcionaré el material"
+                              width={434}
+                              height={124}
+                              className="w-[434px] h-[124px] object-contain"
+                            />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Client Material Details */}
@@ -498,143 +520,42 @@ export default function MaterialSelectionPage() {
 
                       {/* Arkcutt Material Selection */}
                       {formData.materialProvider === "arkcutt" && (
-                        <>
-                          <div className="space-y-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1">
-                                <span className="text-[16px] text-[#18181B]">Seleccionar Material</span>
-                                <Info className="h-[15px] w-[15px] text-[#71717A]" />
-                              </div>
-                              <p className="text-[13px] text-[#52525B]">
-                                Elige el material que quieres que proporcionemos.
-                              </p>
-                            </div>
-
-                            <RadioGroup
-                              value={formData.selectedMaterial || ""}
-                              onValueChange={(value) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  selectedMaterial: value,
-                                  selectedThickness: undefined,
-                                  selectedColor: undefined,
-                                }))
-                              }
-                            >
-                              <div className="space-y-3">
-                                {materials.map((material) => (
-                                  <div
-                                    key={material.id}
-                                    className="flex items-start gap-2 p-3 border border-[#E4E4E7]/50 shadow-sm rounded-lg"
-                                  >
-                                    <RadioGroupItem value={material.id} id={material.id} className="mt-1" />
-                                    <div className="flex-1">
-                                      <Label
-                                        htmlFor={material.id}
-                                        className="text-[13px] font-medium text-[#18181B] cursor-pointer"
-                                      >
-                                        {material.name}
-                                      </Label>
-                                      <p className="text-[13px] text-[#52525B] mt-1">{material.description}</p>
-                                      <p className="text-[11px] text-[#71717A] mt-1">
-                                        Grosores disponibles: {material.thicknessOptions.join(", ")} {material.unit}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </RadioGroup>
-                          </div>
-
-                          {/* Thickness Selection */}
-                          {formData.selectedMaterial && (
-                            <div className="space-y-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[16px] text-[#18181B]">Grosor</span>
-                                  <Info className="h-[15px] w-[15px] text-[#71717A]" />
-                                </div>
-                                <p className="text-[13px] text-[#52525B]">
-                                  Selecciona el grosor para {getSelectedMaterial()?.name}.
-                                </p>
-                              </div>
-
-                              <div className="relative">
-                                <Button
-                                  variant="outline"
-                                  className="w-full justify-between h-10 bg-transparent"
-                                  onClick={() => setOpenDropdown(openDropdown === "thickness" ? null : "thickness")}
-                                >
-                                  <span className="text-[13px]">
-                                    {formData.selectedThickness
-                                      ? `${formData.selectedThickness} ${getSelectedMaterial()?.unit}`
-                                      : "Seleccionar grosor"}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
-
-                                {openDropdown === "thickness" && (
-                                  <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg border border-[#E4E4E7]">
-                                    <div className="py-1">
-                                      {getSelectedMaterial()?.thicknessOptions.map((thickness) => (
-                                        <button
-                                          key={thickness}
-                                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#F4F4F5] ${
-                                            formData.selectedThickness === thickness
-                                              ? "bg-[#F4F4F5] font-medium text-[#18181B]"
-                                              : "text-[#52525B]"
-                                          }`}
-                                          onClick={() => {
-                                            setFormData((prev) => ({ ...prev, selectedThickness: thickness }))
-                                            setOpenDropdown(null)
-                                          }}
-                                        >
-                                          {thickness} {getSelectedMaterial()?.unit}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Color Selection */}
-                          {formData.selectedMaterial && formData.selectedThickness && (
-                            <div className="space-y-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[16px] text-[#18181B]">Color</span>
-                                  <Info className="h-[15px] w-[15px] text-[#71717A]" />
-                                </div>
-                                <p className="text-[13px] text-[#52525B]">
-                                  Selecciona el color para {getSelectedMaterial()?.name}.
-                                </p>
-                              </div>
-
-                              <div className="flex items-center gap-4 flex-wrap">
-                                {getSelectedMaterial()?.colors.map((color) => (
-                                  <button
-                                    key={color.id}
-                                    className={`flex items-center gap-2 p-2 border rounded-lg transition-colors ${
-                                      formData.selectedColor === color.id
-                                        ? "border-[#18181B] bg-[#F4F4F5]"
-                                        : "border-[#E4E4E7] hover:border-[#A1A1AA]"
-                                    }`}
-                                    onClick={() => setFormData((prev) => ({ ...prev, selectedColor: color.id }))}
-                                  >
-                                    <div
-                                      className="w-5 h-5 rounded-full border border-[#E4E4E7]"
-                                      style={{ backgroundColor: color.color }}
-                                    />
-                                    <span className="text-[13px] text-[#18181B]">{color.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </>
+                        <MaterialSelector
+                          selectedMaterial={formData.selectedMaterial}
+                          selectedThickness={formData.selectedThickness}
+                          selectedColor={formData.selectedColor}
+                          onMaterialChange={(materialId) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              selectedMaterial: materialId,
+                              selectedThickness: undefined,
+                              selectedColor: undefined,
+                            }))
+                          }
+                          onThicknessChange={(thickness) =>
+                            setFormData((prev) => ({ ...prev, selectedThickness: thickness }))
+                          }
+                          onColorChange={(colorId) => setFormData((prev) => ({ ...prev, selectedColor: colorId }))}
+                        />
                       )}
+
+                      {/* Location Selection */}
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[16px] text-[#18181B]">Datos Recogida </span>
+                            <Info className="h-[15px] w-[15px] text-[#71717A]" />
+                          </div>
+                          <p className="text-[13px] text-[#52525B]">Selecciona dónde quieres realizar el corte.</p>
+                        </div>
+
+                        <LocationSelector
+                          selectedCity={formData.city}
+                          locationData={formData.locationData}
+                          onCityChange={(city) => setFormData((prev) => ({ ...prev, city }))}
+                          onLocationDataChange={(locationData) => setFormData((prev) => ({ ...prev, locationData }))}
+                        />
+                      </div>
 
                       {/* Urgent Request */}
                       <div className="space-y-4">
