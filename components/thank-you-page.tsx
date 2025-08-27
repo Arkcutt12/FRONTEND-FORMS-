@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { useDXFAnalysis, type UseDXFAnalysisReturn } from "@/hooks/use-dxf-analysis"
+import { useEffect } from "react"
 
 interface PersonalData {
   firstName: string
@@ -25,9 +27,17 @@ interface PersonalData {
   phone: string
 }
 
+interface LocationData {
+  address: string
+  city: string
+  postalCode: string
+  phone: string
+}
+
 interface FormData {
   files: File[]
   city: string
+  locationData?: LocationData
   materialProvider: "client" | "arkcutt"
   clientMaterial?: {
     deliveryDate: string
@@ -46,11 +56,25 @@ interface ThankYouPageProps {
   personalData: PersonalData
   formData: FormData
   onClose: () => void
+  dxfAnalysis?: UseDXFAnalysisReturn
 }
 
-export function ThankYouPage({ personalData, formData, onClose }: ThankYouPageProps) {
+export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: ThankYouPageProps) {
   const requestNumber = `DXF${Math.floor(100000 + Math.random() * 900000)}`
   const currentDate = new Date()
+
+  const internalDxfAnalysis = useDXFAnalysis()
+  const analysis = dxfAnalysis || internalDxfAnalysis
+
+  useEffect(() => {
+    if (formData.files.length > 0 && !analysis.data && !analysis.isLoading) {
+      // Analyze the first DXF file
+      const dxfFile = formData.files.find((file) => file.name.toLowerCase().endsWith(".dxf"))
+      if (dxfFile) {
+        analysis.analyzeDxf(dxfFile)
+      }
+    }
+  }, [formData.files, analysis])
 
   const cities = [
     { id: "madrid", name: "Madrid" },
@@ -59,27 +83,174 @@ export function ThankYouPage({ personalData, formData, onClose }: ThankYouPagePr
     { id: "home", name: "A domicilio" },
   ]
 
+  const materials = [
+    { id: "acrylic", name: "Metacrilato" },
+    { id: "balsa", name: "Madera Balsa" },
+    { id: "plywood", name: "Contrachapado" },
+    { id: "dm", name: "DM" },
+    { id: "cardboard", name: "Cartón Gris" },
+  ]
+
   const getSelectedCity = () => {
     return cities.find((city) => city.id === formData.city)?.name || formData.city
   }
 
-  const handleDownloadSummary = () => {
-    const summaryData = {
-      requestNumber,
-      date: currentDate.toLocaleDateString(),
-      personalData,
-      formData: {
-        ...formData,
-        files: formData.files.map((f) => ({ name: f.name, size: f.size })),
+  const getSelectedMaterial = () => {
+    return materials.find((material) => material.id === formData.selectedMaterial)?.name || formData.selectedMaterial
+  }
+
+  const processLayerData = () => {
+    if (!analysis.data?.entities?.valid) {
+      return "Pendiente de análisis"
+    }
+
+    // Group entities by layer and calculate totals
+    const layerMap = new Map<string, { vectorCount: number; totalLength: number; area: number }>()
+
+    analysis.data.entities.valid.forEach((entity) => {
+      const layerName = entity.layer || "0"
+      const current = layerMap.get(layerName) || { vectorCount: 0, totalLength: 0, area: 0 }
+
+      layerMap.set(layerName, {
+        vectorCount: current.vectorCount + 1,
+        totalLength: current.totalLength + entity.length,
+        area: current.area, // Area calculation would need additional data
+      })
+    })
+
+    // Convert to array format
+    return Array.from(layerMap.entries()).map(([layerName, data]) => ({
+      nombre: layerName,
+      vectores: data.vectorCount,
+      longitud_mm: Math.round(data.totalLength * 100) / 100,
+      longitud_m: Math.round(data.totalLength / 10) / 100,
+      area_material: data.area || "Calculando...",
+    }))
+  }
+
+  const generateCompleteJSON = () => {
+    const dxfData = analysis.data
+    const errorData = analysis.errorAnalysis
+
+    const jsonData = {
+      Cliente: {
+        "Nombre y Apellidos": `${personalData.firstName} ${personalData.lastName}`,
+        Mail: personalData.email,
+        "Número de Teléfono": personalData.phone,
+      },
+      Pedido: {
+        "Archivo dxf": formData.files.map((file) => ({
+          nombre: file.name,
+          tamaño: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          tipo: file.type || "application/dxf",
+          url_descarga: `#archivo-${file.name.replace(/[^a-zA-Z0-9]/g, "-")}`,
+        })),
+        "Archivo validado":
+          errorData?.validation_status === "VALID"
+            ? "Sí"
+            : errorData?.validation_status === "WARNING"
+              ? "Con advertencias"
+              : errorData?.validation_status === "ERROR"
+                ? "No - Errores detectados"
+                : "Pendiente de validación",
+        "Longitud vector total": dxfData?.cut_length
+          ? `${dxfData.cut_length.total_mm} mm (${dxfData.cut_length.total_m} m)`
+          : "Pendiente de cálculo",
+        "Area material": dxfData?.bounding_box
+          ? `${Math.round(dxfData.bounding_box.area)} mm² (${dxfData.bounding_box.width} x ${dxfData.bounding_box.height} mm)`
+          : "Pendiente de cálculo",
+        Capas: processLayerData(),
+        "Material seleccionado":
+          formData.materialProvider === "arkcutt" ? getSelectedMaterial() : "Proporcionado por cliente",
+        "¿Quién proporciona el material?":
+          formData.materialProvider === "arkcutt"
+            ? {
+                proveedor: "Arkcutt",
+                "Material seleccionado": getSelectedMaterial(),
+                Grosor: formData.selectedThickness ? `${formData.selectedThickness}mm` : "No especificado",
+                Color: formData.selectedColor || "No especificado",
+              }
+            : {
+                proveedor: "Cliente",
+                "Fecha de entrega": formData.clientMaterial?.deliveryDate || "No especificada",
+                "Hora de entrega": formData.clientMaterial?.deliveryTime || "No especificada",
+                "Tipo de Material": formData.clientMaterial?.materialType || "No especificado",
+                Grosor: formData.clientMaterial?.thickness
+                  ? `${formData.clientMaterial.thickness}mm`
+                  : "No especificado",
+              },
+        "Datos Recogida":
+          formData.city === "home"
+            ? {
+                tipo: "A domicilio",
+                direccion: formData.locationData?.address || "No especificada",
+                ciudad: formData.locationData?.city || "No especificada",
+                codigo_postal: formData.locationData?.postalCode || "No especificado",
+                telefono: formData.locationData?.phone || "No especificado",
+              }
+            : {
+                tipo: "Recogida en tienda",
+                ciudad: getSelectedCity(),
+              },
+        "Solicitud urgente": formData.isUrgent,
+        "Fecha y hora urgente": formData.urgentDateTime || "No aplicable",
+        "Número de solicitud": requestNumber,
+        "Fecha de solicitud": currentDate.toISOString(),
+        Estado: "Enviada - Pendiente de análisis",
+        "Análisis DXF": {
+          "Estado del análisis": analysis.isLoading
+            ? "Analizando..."
+            : analysis.error
+              ? "Error en análisis"
+              : dxfData
+                ? "Completado"
+                : "Pendiente",
+          Estadísticas: dxfData
+            ? {
+                "Total entidades": dxfData.statistics.total_entities,
+                "Entidades válidas": dxfData.statistics.valid_entities,
+                "Entidades problemáticas": dxfData.statistics.phantom_entities,
+              }
+            : "Pendiente de análisis",
+          "Calidad del archivo": errorData
+            ? {
+                "Puntuación general": `${errorData.overall_score}/100`,
+                "Integridad geométrica": `${errorData.quality_metrics.geometry_integrity.toFixed(1)}/100`,
+                "Organización de capas": `${errorData.quality_metrics.layer_organization.toFixed(1)}/100`,
+                "Estándares de dibujo": `${errorData.quality_metrics.drawing_standards.toFixed(1)}/100`,
+                Optimización: `${errorData.quality_metrics.file_optimization.toFixed(1)}/100`,
+              }
+            : "Pendiente de análisis",
+          "Errores detectados": errorData?.errors?.length
+            ? errorData.errors.map((error) => ({
+                tipo: error.type,
+                categoria: error.category,
+                mensaje: error.message,
+                detalles: error.details,
+              }))
+            : "Ninguno",
+          Recomendaciones: errorData?.recommendations?.length
+            ? errorData.recommendations.map((rec) => ({
+                prioridad: rec.priority,
+                accion: rec.action,
+                descripcion: rec.description,
+              }))
+            : "Ninguna",
+        },
       },
     }
 
-    const dataStr = JSON.stringify(summaryData, null, 2)
+    return jsonData
+  }
+
+  const handleDownloadSummary = () => {
+    const completeData = generateCompleteJSON()
+    const dataStr = JSON.stringify(completeData, null, 2)
     const dataBlob = new Blob([dataStr], { type: "application/json" })
 
     const link = document.createElement("a")
     link.href = URL.createObjectURL(dataBlob)
-    link.download = `solicitud-${requestNumber}.json`
+    link.download = `datos-formulario-${requestNumber}.json`
     link.click()
   }
 
@@ -175,7 +346,7 @@ export function ThankYouPage({ personalData, formData, onClose }: ThankYouPagePr
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleDownloadSummary}>
                     <Download className="h-4 w-4 mr-2" />
-                    Descargar
+                    Descargar Datos
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleShare}>
                     <Share2 className="h-4 w-4 mr-2" />
