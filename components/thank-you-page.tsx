@@ -17,8 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { useDXFAnalysis, type UseDXFAnalysisReturn } from "@/hooks/use-dxf-analysis"
-import { useEffect } from "react"
+import type { DXFAnalysisResponse, DXFErrorAnalysisResponse } from "@/lib/api-client"
 
 interface PersonalData {
   firstName: string
@@ -56,25 +55,19 @@ interface ThankYouPageProps {
   personalData: PersonalData
   formData: FormData
   onClose: () => void
-  dxfAnalysis?: UseDXFAnalysisReturn
+  dxfAnalysisData?: DXFAnalysisResponse | null
+  dxfErrorAnalysis?: DXFErrorAnalysisResponse | null
 }
 
-export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: ThankYouPageProps) {
+export function ThankYouPage({
+  personalData,
+  formData,
+  onClose,
+  dxfAnalysisData,
+  dxfErrorAnalysis,
+}: ThankYouPageProps) {
   const requestNumber = `DXF${Math.floor(100000 + Math.random() * 900000)}`
   const currentDate = new Date()
-
-  const internalDxfAnalysis = useDXFAnalysis()
-  const analysis = dxfAnalysis || internalDxfAnalysis
-
-  useEffect(() => {
-    if (formData.files.length > 0 && !analysis.data && !analysis.isLoading) {
-      // Analyze the first DXF file
-      const dxfFile = formData.files.find((file) => file.name.toLowerCase().endsWith(".dxf"))
-      if (dxfFile) {
-        analysis.analyzeDxf(dxfFile)
-      }
-    }
-  }, [formData.files, analysis])
 
   const cities = [
     { id: "madrid", name: "Madrid" },
@@ -100,14 +93,14 @@ export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: T
   }
 
   const processLayerData = () => {
-    if (!analysis.data?.entities?.valid) {
-      return "Pendiente de análisis"
+    if (!dxfAnalysisData?.entities?.valid) {
+      return "Análisis no disponible"
     }
 
     // Group entities by layer and calculate totals
     const layerMap = new Map<string, { vectorCount: number; totalLength: number; area: number }>()
 
-    analysis.data.entities.valid.forEach((entity) => {
+    dxfAnalysisData.entities.valid.forEach((entity) => {
       const layerName = entity.layer || "0"
       const current = layerMap.get(layerName) || { vectorCount: 0, totalLength: 0, area: 0 }
 
@@ -129,9 +122,6 @@ export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: T
   }
 
   const generateCompleteJSON = () => {
-    const dxfData = analysis.data
-    const errorData = analysis.errorAnalysis
-
     const jsonData = {
       Cliente: {
         "Nombre y Apellidos": `${personalData.firstName} ${personalData.lastName}`,
@@ -145,20 +135,21 @@ export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: T
           tipo: file.type || "application/dxf",
           url_descarga: `#archivo-${file.name.replace(/[^a-zA-Z0-9]/g, "-")}`,
         })),
-        "Archivo validado":
-          errorData?.validation_status === "VALID"
+        "Archivo validado": !dxfErrorAnalysis
+          ? "No se pudo validar - Servicio no disponible"
+          : dxfErrorAnalysis.validation_status === "VALID"
             ? "Sí"
-            : errorData?.validation_status === "WARNING"
+            : dxfErrorAnalysis.validation_status === "WARNING"
               ? "Con advertencias"
-              : errorData?.validation_status === "ERROR"
+              : dxfErrorAnalysis.validation_status === "ERROR"
                 ? "No - Errores detectados"
                 : "Pendiente de validación",
-        "Longitud vector total": dxfData?.cut_length
-          ? `${dxfData.cut_length.total_mm} mm (${dxfData.cut_length.total_m} m)`
-          : "Pendiente de cálculo",
-        "Area material": dxfData?.bounding_box
-          ? `${Math.round(dxfData.bounding_box.area)} mm² (${dxfData.bounding_box.width} x ${dxfData.bounding_box.height} mm)`
-          : "Pendiente de cálculo",
+        "Longitud vector total": !dxfAnalysisData?.cut_length
+          ? "No disponible - Servicio no disponible"
+          : `${dxfAnalysisData.cut_length.total_mm} mm (${dxfAnalysisData.cut_length.total_m} m)`,
+        "Area material": !dxfAnalysisData?.bounding_box
+          ? "No disponible - Servicio no disponible"
+          : `${Math.round(dxfAnalysisData.bounding_box.area)} mm² (${dxfAnalysisData.bounding_box.width} x ${dxfAnalysisData.bounding_box.height} mm)`,
         Capas: processLayerData(),
         "Material seleccionado":
           formData.materialProvider === "arkcutt" ? getSelectedMaterial() : "Proporcionado por cliente",
@@ -198,44 +189,43 @@ export function ThankYouPage({ personalData, formData, onClose, dxfAnalysis }: T
         "Fecha de solicitud": currentDate.toISOString(),
         Estado: "Enviada - Pendiente de análisis",
         "Análisis DXF": {
-          "Estado del análisis": analysis.isLoading
-            ? "Analizando..."
-            : analysis.error
-              ? "Error en análisis"
-              : dxfData
-                ? "Completado"
-                : "Pendiente",
-          Estadísticas: dxfData
-            ? {
-                "Total entidades": dxfData.statistics.total_entities,
-                "Entidades válidas": dxfData.statistics.valid_entities,
-                "Entidades problemáticas": dxfData.statistics.phantom_entities,
-              }
-            : "Pendiente de análisis",
-          "Calidad del archivo": errorData
-            ? {
-                "Puntuación general": `${errorData.overall_score}/100`,
-                "Integridad geométrica": `${errorData.quality_metrics.geometry_integrity.toFixed(1)}/100`,
-                "Organización de capas": `${errorData.quality_metrics.layer_organization.toFixed(1)}/100`,
-                "Estándares de dibujo": `${errorData.quality_metrics.drawing_standards.toFixed(1)}/100`,
-                Optimización: `${errorData.quality_metrics.file_optimization.toFixed(1)}/100`,
-              }
-            : "Pendiente de análisis",
-          "Errores detectados": errorData?.errors?.length
-            ? errorData.errors.map((error) => ({
+          "Estado del análisis": !dxfAnalysisData ? "Error - Servicio no disponible" : "Completado",
+          "Estado de conexión": {
+            "Backend principal": dxfAnalysisData ? "Conectado" : "Desconectado",
+            "Backend de análisis": dxfErrorAnalysis ? "Conectado" : "Desconectado",
+          },
+          Estadísticas: !dxfAnalysisData
+            ? "No disponible - Servicio no disponible"
+            : {
+                "Total entidades": dxfAnalysisData.statistics.total_entities,
+                "Entidades válidas": dxfAnalysisData.statistics.valid_entities,
+                "Entidades problemáticas": dxfAnalysisData.statistics.phantom_entities,
+              },
+          "Calidad del archivo": !dxfErrorAnalysis
+            ? "No disponible - Servicio no disponible"
+            : {
+                "Puntuación general": `${dxfErrorAnalysis.overall_score}/100`,
+                "Integridad geométrica": `${dxfErrorAnalysis.quality_metrics.geometry_integrity.toFixed(1)}/100`,
+                "Organización de capas": `${dxfErrorAnalysis.quality_metrics.layer_organization.toFixed(1)}/100`,
+                "Estándares de dibujo": `${dxfErrorAnalysis.quality_metrics.drawing_standards.toFixed(1)}/100`,
+                Optimización: `${dxfErrorAnalysis.quality_metrics.file_optimization.toFixed(1)}/100`,
+              },
+          "Errores detectados": !dxfErrorAnalysis?.errors?.length
+            ? "No se pudo analizar - Servicio no disponible"
+            : dxfErrorAnalysis.errors.map((error) => ({
                 tipo: error.type,
                 categoria: error.category,
                 mensaje: error.message,
                 detalles: error.details,
-              }))
-            : "Ninguno",
-          Recomendaciones: errorData?.recommendations?.length
-            ? errorData.recommendations.map((rec) => ({
+              })),
+          Recomendaciones: !dxfErrorAnalysis?.recommendations?.length
+            ? "No disponible - Servicio no disponible"
+            : dxfErrorAnalysis.recommendations.map((rec) => ({
                 prioridad: rec.priority,
                 accion: rec.action,
                 descripcion: rec.description,
-              }))
-            : "Ninguna",
+              })),
+          "Mensaje de error": "Ninguno",
         },
       },
     }

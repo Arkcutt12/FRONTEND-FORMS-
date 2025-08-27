@@ -10,8 +10,6 @@ import { Progress } from "@/components/ui/progress"
 import {
   Ruler,
   Square,
-  Calculator,
-  Settings,
   AlertTriangle,
   CheckCircle,
   Filter,
@@ -277,7 +275,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange, errorAnalysi
               <span className="text-[11px] text-gray-600">
                 {qualityInfo.hasBackendData ? "Puntuación general" : "Eficiencia de filtrado"}
               </span>
-              <span className={`text-[11px] font-medium ${qualityInfo.color}`}>{qualityInfo.score}%</span>
+              <span className={`text-[12px] font-medium ${qualityInfo.color}`}>{qualityInfo.score}%</span>
             </div>
             <Progress value={qualityInfo.score} className="h-1" />
             <p className="text-[10px] text-gray-600">{qualityInfo.details}</p>
@@ -494,16 +492,6 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange, errorAnalysi
 
         {/* Configuración de Hoja */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[13px] font-medium text-[#18181B] flex items-center gap-1">
-              <Calculator className="h-3 w-3" />
-              Hoja Material
-            </h4>
-            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => setShowSheetConfig(!showSheetConfig)}>
-              <Settings className="h-3 w-3" />
-            </Button>
-          </div>
-
           {showSheetConfig && (
             <div className="space-y-2 p-2 bg-[#FAFAFA] rounded-md">
               <div className="grid grid-cols-2 gap-2">

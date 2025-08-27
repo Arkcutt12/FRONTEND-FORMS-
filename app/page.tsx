@@ -15,8 +15,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 import { OrderSummary } from "@/components/order-summary"
 import { ThankYouPage } from "@/components/thank-you-page"
-import { LocationSelector } from "@/components/location-selector"
 import { MaterialSelector } from "@/components/material-selector"
+import { LocationSelector } from "@/components/location-selector"
+import { useDXFAnalysis } from "@/hooks/use-dxf-analysis"
 
 interface Material {
   id: string
@@ -53,6 +54,16 @@ interface FormData {
 }
 
 export default function MaterialSelectionPage() {
+  const {
+    isLoading: isDXFAnalyzing,
+    error: dxfError,
+    data: dxfData,
+    errorAnalysis: dxfErrorAnalysis,
+    isConnected: isDXFConnected,
+    analyzeDxf,
+    clearData: clearDXFData,
+  } = useDXFAnalysis()
+
   const [formData, setFormData] = useState<FormData>({
     files: [],
     city: "",
@@ -137,10 +148,15 @@ export default function MaterialSelectionPage() {
 
   const handlePreviewFile = (file: File) => {
     setPreviewFile(file)
+    if (file && file.name.toLowerCase().endsWith(".dxf")) {
+      console.log("[v0] Starting DXF analysis for file:", file.name)
+      analyzeDxf(file)
+    }
   }
 
   const closePreview = () => {
     setPreviewFile(null)
+    clearDXFData()
   }
 
   const handleThicknessChange = (value: string) => {
@@ -179,9 +195,10 @@ export default function MaterialSelectionPage() {
     email: string
     phone: string
   }) => {
-    // Here you would send the formData and personalData to your tracking system
     console.log("Form Data:", formData)
     console.log("Personal Data:", personalData)
+    console.log("DXF Analysis Data:", dxfData)
+    console.log("DXF Error Analysis:", dxfErrorAnalysis)
 
     setSubmittedPersonalData(personalData)
     setShowOrderSummary(false)
@@ -194,7 +211,6 @@ export default function MaterialSelectionPage() {
 
   const handleCloseSuccess = () => {
     setShowRequestSuccess(false)
-    // Reset form if needed
     setFormData({
       files: [],
       city: "",
@@ -208,7 +224,26 @@ export default function MaterialSelectionPage() {
     if (formData.files.length === 0) return false
     if (!formData.city) return false
 
-    // Validate home delivery data if selected
+    const hasDXFFiles = formData.files.some((file) => file.name.toLowerCase().endsWith(".dxf"))
+    if (hasDXFFiles) {
+      if (isDXFAnalyzing) {
+        console.log("[v0] Form invalid: DXF analysis still in progress")
+        return false
+      }
+      if (dxfError) {
+        console.log("[v0] Form invalid: DXF analysis error:", dxfError)
+        return false
+      }
+      if (!dxfData || !dxfErrorAnalysis) {
+        console.log("[v0] Form invalid: DXF analysis not completed")
+        return false
+      }
+      if (dxfErrorAnalysis.validation_status === "ERROR") {
+        console.log("[v0] Form invalid: DXF file has critical errors")
+        return false
+      }
+    }
+
     if (formData.city === "home") {
       if (
         !formData.locationData?.address ||
@@ -253,20 +288,24 @@ export default function MaterialSelectionPage() {
     return "/images/robe-detail-2.jpeg"
   }
 
-  // Auto-preview first file when files change
   useEffect(() => {
     if (formData.files.length > 0 && !previewFile) {
       setPreviewFile(formData.files[0])
+      const firstDXFFile = formData.files.find((file) => file.name.toLowerCase().endsWith(".dxf"))
+      if (firstDXFFile) {
+        console.log("[v0] Auto-analyzing first DXF file:", firstDXFFile.name)
+        analyzeDxf(firstDXFFile)
+      }
     } else if (formData.files.length === 0) {
       setPreviewFile(null)
+      clearDXFData()
     }
-  }, [formData.files, previewFile])
+  }, [formData.files, previewFile, analyzeDxf, clearDXFData])
 
   return (
     <>
       <div className="w-full h-screen bg-white flex flex-col">
         <div className="w-full bg-[#FAFAFA] shadow-lg overflow-hidden flex-1 flex flex-col">
-          {/* Show Order Summary */}
           {showOrderSummary && (
             <OrderSummary
               formData={formData}
@@ -276,17 +315,19 @@ export default function MaterialSelectionPage() {
             />
           )}
 
-          {/* Show Thank You Page */}
           {showRequestSuccess && submittedPersonalData && (
-            <ThankYouPage personalData={submittedPersonalData} formData={formData} onClose={handleCloseSuccess} />
+            <ThankYouPage
+              personalData={submittedPersonalData}
+              formData={formData}
+              onClose={handleCloseSuccess}
+              dxfAnalysisData={dxfData}
+              dxfErrorAnalysis={dxfErrorAnalysis}
+            />
           )}
 
-          {/* Show Main Form */}
           {!showOrderSummary && !showRequestSuccess && (
             <>
-              {/* Gallery Section or DXF Viewer - Fixed height */}
               <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                {/* Gallery Section or DXF Viewer - Fixed height */}
                 <div className="flex-1 bg-[#FAFAFA] relative overflow-hidden">
                   {previewFile ? (
                     <DXFViewer file={previewFile} onClose={closePreview} />
@@ -313,7 +354,6 @@ export default function MaterialSelectionPage() {
 
                 <Separator orientation="vertical" className="hidden md:block" />
 
-                {/* Form Section - Scrollable */}
                 <div className="w-full md:w-[560px] bg-white flex flex-col overflow-hidden">
                   <div className="flex-1 overflow-y-auto">
                     <div className="p-6 space-y-8">
@@ -334,7 +374,6 @@ export default function MaterialSelectionPage() {
                         />
                       </div>
 
-                      {/* File Upload Section */}
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
@@ -354,9 +393,53 @@ export default function MaterialSelectionPage() {
                           maxSize={50 * 1024 * 1024}
                           filePrice={0} // No price calculation
                         />
+
+                        {formData.files.some((file) => file.name.toLowerCase().endsWith(".dxf")) && (
+                          <div className="space-y-2">
+                            {isDXFAnalyzing && (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>Analizando archivo DXF... Por favor espera.</AlertDescription>
+                              </Alert>
+                            )}
+
+                            {dxfError && (
+                              <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>Error en análisis: {dxfError}</AlertDescription>
+                              </Alert>
+                            )}
+
+                            {dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "ERROR" && (
+                              <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                  El archivo DXF tiene errores críticos que deben corregirse antes de continuar.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+
+                            {dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "WARNING" && (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                  El archivo DXF tiene advertencias. Se recomienda revisar antes de continuar.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+
+                            {dxfData && dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "VALID" && (
+                              <Alert className="border-green-200 bg-green-50">
+                                <AlertCircle className="h-4 w-4 text-green-600" />
+                                <AlertDescription className="text-green-800">
+                                  Archivo DXF analizado correctamente. Listo para procesar.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Material Provider Selection */}
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
@@ -423,7 +506,6 @@ export default function MaterialSelectionPage() {
                         </div>
                       </div>
 
-                      {/* Client Material Details */}
                       {formData.materialProvider === "client" && (
                         <div className="space-y-4">
                           <div className="space-y-1">
@@ -518,7 +600,6 @@ export default function MaterialSelectionPage() {
                         </div>
                       )}
 
-                      {/* Arkcutt Material Selection */}
                       {formData.materialProvider === "arkcutt" && (
                         <MaterialSelector
                           selectedMaterial={formData.selectedMaterial}
@@ -543,7 +624,7 @@ export default function MaterialSelectionPage() {
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-[16px] text-[#18181B]">Datos Recogida </span>
+                            <span className="text-[16px] text-[#18181B]">Datos Recogida</span>
                             <Info className="h-[15px] w-[15px] text-[#71717A]" />
                           </div>
                           <p className="text-[13px] text-[#52525B]">Selecciona dónde quieres realizar el corte.</p>
@@ -592,7 +673,6 @@ export default function MaterialSelectionPage() {
                     </div>
                   </div>
 
-                  {/* Footer - Fixed at bottom */}
                   <div className="flex-shrink-0 bg-white border-t border-[#E4E4E7] p-6">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" className="text-[13px] font-medium text-[#18181B] bg-transparent">
@@ -603,7 +683,7 @@ export default function MaterialSelectionPage() {
                         onClick={handleSubmit}
                         disabled={!isFormValid()}
                       >
-                        Enviar Solicitud
+                        {isDXFAnalyzing ? "Analizando..." : "Enviar Solicitud"}
                       </Button>
                     </div>
                   </div>
@@ -614,7 +694,6 @@ export default function MaterialSelectionPage() {
         </div>
       </div>
 
-      {/* Keep the existing fullscreen viewer */}
       {isFullscreen && selectedImage !== null && (
         <FullscreenViewer isOpen={isFullscreen} onClose={() => toggleFullscreen()} title="Servicio Corte Láser">
           <div className="flex items-center justify-center h-full">

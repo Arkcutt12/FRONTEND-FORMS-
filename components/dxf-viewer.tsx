@@ -5,10 +5,7 @@ import type React from "react"
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
-  ArrowLeft,
   Upload,
-  Eye,
-  EyeOff,
   PieChart,
   Download,
   AlertTriangle,
@@ -18,6 +15,7 @@ import {
   Move,
   RotateCcw,
   Maximize2,
+  X,
 } from "lucide-react"
 import { FullscreenButton } from "@/components/fullscreen-button"
 import { FullscreenViewer } from "@/components/fullscreen-viewer"
@@ -441,37 +439,18 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
               >
                 <Download className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white shadow-md"
-                onClick={openApiDocs}
-                title="Ver documentación API"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white shadow-md"
-                onClick={() => setShowValidEntities(!showValidEntities)}
-                title="Mostrar capas"
-              >
-                {showValidEntities ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white shadow-md"
-                onClick={() => setShowPhantomEntities(!showPhantomEntities)}
-                title="Entidades fantasma"
-              >
-                <PieChart className="h-4 w-4" />
-              </Button>
+              
+              
             </>
           )}
-          <Button variant="outline" size="icon" className="bg-white shadow-md" onClick={onClose} title="Volver">
-            <ArrowLeft className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white shadow-md"
+            onClick={onClose}
+            title="Eliminar archivo"
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
