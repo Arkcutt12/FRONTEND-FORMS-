@@ -107,57 +107,41 @@ export function ThankYouPage({
         nombre: layerName,
         vectores: data.vectorCount,
         longitud_mm: Math.round(data.totalLength * 100) / 100,
+        longitud_m: Math.round((data.totalLength / 1000) * 100) / 100,
         area_material: data.area || 0,
       }))
     }
 
     return {
-      numero_solicitud: requestNumber,
-      fecha_solicitud: currentDate.toISOString(),
-      cliente: {
-        nombre_completo: `${personalData.firstName} ${personalData.lastName}`,
-        email: personalData.email,
-        telefono: personalData.phone,
+      Cliente: {
+        "Nombre y Apellidos": `${personalData.firstName} ${personalData.lastName}`,
+        Mail: personalData.email,
+        "Número de Teléfono": personalData.phone,
       },
-      pedido: {
-        archivos_dxf: formData.files.map((file) => ({
-          nombre: file.name,
-          tamaño_bytes: file.size,
-          tamaño_mb: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-          tipo: file.type || "application/dxf",
-          url_descarga: file.url || null,
-        })),
-        archivo_validado: dxfErrorAnalysis?.validation_status === "VALID" ? "sí" : "no",
-        estado_validacion: dxfErrorAnalysis?.validation_status || "UNKNOWN",
-        longitud_vector_total: dxfAnalysisData?.cut_length?.total_mm || 0,
-        longitud_vector_total_metros: dxfAnalysisData?.cut_length?.total_m || 0,
-        area_material: dxfAnalysisData?.bounding_box?.area || 0,
-        dimensiones_bounding_box: {
-          ancho: dxfAnalysisData?.bounding_box?.width || 0,
-          alto: dxfAnalysisData?.bounding_box?.height || 0,
-        },
-        capas: processLayerData(),
-        estadisticas_archivo: {
-          entidades_totales: dxfAnalysisData?.statistics?.total_entities || 0,
-          entidades_validas: dxfAnalysisData?.statistics?.valid_entities || 0,
-          entidades_problematicas: dxfAnalysisData?.statistics?.phantom_entities || 0,
-        },
-        material_seleccionado: getSelectedMaterial(formData.selectedMaterial),
-        quien_proporciona_material: formData.materialProvider === "arkcutt" ? "Arkcutt" : "Cliente",
-        detalles_material:
+      Pedido: {
+        "Número de solicitud": requestNumber,
+        "Fecha de solicitud": currentDate.toISOString(),
+        "Material seleccionado": getSelectedMaterial(formData.selectedMaterial),
+        "Longitud vector total": `${((dxfAnalysisData?.cut_length?.total_mm || 0) / 1000).toFixed(3)} m`,
+        "Area material": `${dxfAnalysisData?.bounding_box?.area || 0} mm²`,
+        "Solicitud urgente": formData.isUrgent,
+        "¿Quién proporciona el material?":
           formData.materialProvider === "arkcutt"
             ? {
-                material: getSelectedMaterial(formData.selectedMaterial),
-                grosor: formData.selectedThickness,
-                color: formData.selectedColor,
+                proveedor: "Arkcutt",
+                "Material seleccionado": getSelectedMaterial(formData.selectedMaterial),
+                Grosor: formData.selectedThickness,
+                Color: formData.selectedColor,
               }
             : {
-                fecha_entrega: formData.clientMaterial?.deliveryDate,
-                hora_entrega: formData.clientMaterial?.deliveryTime,
-                tipo_material: formData.clientMaterial?.materialType,
-                grosor: formData.clientMaterial?.thickness,
+                proveedor: "Cliente",
+                "Fecha de entrega": formData.clientMaterial?.deliveryDate,
+                "Hora de entrega": formData.clientMaterial?.deliveryTime,
+                "Tipo de Material": formData.clientMaterial?.materialType,
+                Grosor: formData.clientMaterial?.thickness,
               },
-        datos_recogida:
+        Capas: processLayerData(),
+        "Datos Recogida":
           formData.city === "home"
             ? {
                 tipo: "A domicilio",
@@ -166,18 +150,11 @@ export function ThankYouPage({
                 direccion: formData.locationData?.address,
                 ciudad: formData.locationData?.city,
                 codigo_postal: formData.locationData?.postalCode,
-                direccion_completa: `${formData.locationData?.address}, ${formData.locationData?.city}, ${formData.locationData?.postalCode}`,
               }
             : {
                 tipo: "Recogida en tienda",
                 ciudad_seleccionada: getSelectedCity(formData.city),
               },
-        servicio_urgente: formData.isUrgent ? "sí" : "no",
-      },
-      analisis_backend: {
-        backend_principal_conectado: dxfAnalysisData ? "sí" : "no",
-        backend_errores_conectado: dxfErrorAnalysis ? "sí" : "no",
-        datos_disponibles: dxfAnalysisData && dxfErrorAnalysis ? "completos" : "parciales",
       },
     }
   }
@@ -242,12 +219,21 @@ export function ThankYouPage({
 
   const getBudgetValue = (path: string, fallback: any = "N/A") => {
     try {
-      const keys = path.split(".")
-      let value = budget
-      for (const key of keys) {
-        value = value?.[key]
+      if (budget && path.includes(".")) {
+        const keys = path.split(".")
+        let value = budget
+        for (const key of keys) {
+          value = value?.[key]
+        }
+        if (value !== undefined && value !== null) return value
       }
-      return value !== undefined && value !== null ? value : fallback
+
+      // Try direct access to the field
+      if (budget && budget[path] !== undefined && budget[path] !== null) {
+        return budget[path]
+      }
+
+      return fallback
     } catch {
       return fallback
     }
@@ -278,7 +264,7 @@ export function ThankYouPage({
             <div>
               <h1 className="text-[16px] font-semibold text-[#18181B]">¡Presupuesto Generado!</h1>
               <p className="text-[12px] text-[#52525B]">
-                #{getBudgetValue("presupuesto.numero_presupuesto", getBudgetValue("numero_presupuesto", requestNumber))}
+                #{getBudgetValue("numero_presupuesto", getBudgetValue("presupuesto.numero_presupuesto", requestNumber))}
               </p>
             </div>
           </div>
@@ -324,8 +310,8 @@ export function ThankYouPage({
                       <Calculator className="h-5 w-5" />
                       Presupuesto #
                       {getBudgetValue(
-                        "presupuesto.numero_presupuesto",
-                        getBudgetValue("numero_presupuesto", requestNumber),
+                        "numero_presupuesto",
+                        getBudgetValue("presupuesto.numero_presupuesto", requestNumber),
                       )}
                     </CardTitle>
                     <div className="flex gap-2">
@@ -348,7 +334,7 @@ export function ThankYouPage({
                   <div className="text-center py-4">
                     <div className="text-[32px] font-bold text-green-900 flex items-center justify-center gap-1">
                       <Euro className="h-6 w-6" />
-                      {(getBudgetValue("presupuesto.total", getBudgetValue("total", 0)) as number).toFixed(2)}
+                      {(getBudgetValue("data.total", getBudgetValue("total", 0)) as number).toFixed(2)}
                     </div>
                     <p className="text-[14px] text-green-700">IVA incluido</p>
                   </div>
@@ -357,18 +343,14 @@ export function ThankYouPage({
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 text-[14px] font-medium text-green-900">
                         <Calendar className="h-4 w-4" />
-                        {getBudgetValue(
-                          "condiciones.tiempo_entrega_dias",
-                          getBudgetValue("tiempo_entrega_dias", "N/A"),
-                        )}{" "}
-                        días
+                        48h
                       </div>
                       <p className="text-[12px] text-green-700">Tiempo de entrega</p>
                     </div>
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 text-[14px] font-medium text-green-900">
                         <Clock className="h-4 w-4" />
-                        {getBudgetValue("presupuesto.validez_dias", getBudgetValue("validez_dias", "N/A"))} días
+                        30 días
                       </div>
                       <p className="text-[12px] text-green-700">Validez del presupuesto</p>
                     </div>
@@ -472,19 +454,19 @@ export function ThankYouPage({
                         <span className="text-[14px] text-[#71717A]">Subtotal</span>
                         <span className="text-[14px]">
                           €
-                          {(getBudgetValue("presupuesto.subtotal", getBudgetValue("subtotal", 0)) as number).toFixed(2)}
+                          {(getBudgetValue("subtotal", getBudgetValue("presupuesto.subtotal", 0)) as number).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[14px] text-[#71717A]">IVA (21%)</span>
                         <span className="text-[14px]">
-                          €{(getBudgetValue("presupuesto.iva", getBudgetValue("iva", 0)) as number).toFixed(2)}
+                          €{(getBudgetValue("iva", getBudgetValue("presupuesto.iva", 0)) as number).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-[16px] font-semibold">
                         <span>Total</span>
                         <span>
-                          €{(getBudgetValue("presupuesto.total", getBudgetValue("total", 0)) as number).toFixed(2)}
+                          €{(getBudgetValue("total", getBudgetValue("presupuesto.total", 0)) as number).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -506,8 +488,8 @@ export function ThankYouPage({
                           <p className="text-[14px] font-medium text-[#18181B]">Tiempo de Entrega</p>
                           <p className="text-[13px] text-[#71717A]">
                             {getBudgetValue(
-                              "condiciones.tiempo_entrega_dias",
-                              getBudgetValue("tiempo_entrega_dias", "N/A"),
+                              "tiempo_entrega_dias",
+                              getBudgetValue("condiciones.tiempo_entrega_dias", "N/A"),
                             )}{" "}
                             días laborables desde la confirmación del pedido
                           </p>
@@ -530,7 +512,7 @@ export function ThankYouPage({
                           <div>
                             <p className="text-[14px] font-medium text-[#18181B]">Garantía</p>
                             <p className="text-[13px] text-[#71717A]">
-                              {getBudgetValue("condiciones.garantia_meses", getBudgetValue("garantia_meses", "N/A"))}{" "}
+                              {getBudgetValue("garantia_meses", getBudgetValue("condiciones.garantia_meses", "N/A"))}{" "}
                               meses de garantía en el servicio
                             </p>
                           </div>
@@ -623,7 +605,7 @@ export function ThankYouPage({
         <div className="max-w-[600px] mx-auto flex justify-between items-center">
           <div className="text-[12px] text-[#71717A]">
             Presupuesto #
-            {getBudgetValue("presupuesto.numero_presupuesto", getBudgetValue("numero_presupuesto", requestNumber))} •{" "}
+            {getBudgetValue("numero_presupuesto", getBudgetValue("presupuesto.numero_presupuesto", requestNumber))} •{" "}
             {currentDate.toLocaleDateString()}
           </div>
           <Button onClick={onClose} className="bg-[#27272A] hover:bg-[#18181B]">
