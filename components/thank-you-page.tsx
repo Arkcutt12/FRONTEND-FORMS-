@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Download,
   Share2,
-  ArrowLeft,
   Calculator,
   Euro,
   Calendar,
@@ -21,7 +20,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { BudgetClient, type BudgetResponse } from "@/lib/budget-client"
@@ -112,48 +110,52 @@ export function ThankYouPage({
       }))
     }
 
+    const selectedMaterial = getSelectedMaterial(formData.selectedMaterial) || "No especificado"
+    const selectedCity = getSelectedCity(formData.city) || "No especificado"
+
     return {
       Cliente: {
-        "Nombre y Apellidos": `${personalData.firstName} ${personalData.lastName}`,
-        Mail: personalData.email,
-        "Número de Teléfono": personalData.phone,
+        "Nombre y Apellidos":
+          `${personalData.firstName || ""} ${personalData.lastName || ""}`.trim() || "No especificado",
+        Mail: personalData.email || "no-email@example.com",
+        "Número de Teléfono": personalData.phone || "No especificado",
       },
       Pedido: {
         "Número de solicitud": requestNumber,
         "Fecha de solicitud": currentDate.toISOString(),
-        "Material seleccionado": getSelectedMaterial(formData.selectedMaterial),
+        "Material seleccionado": selectedMaterial,
         "Longitud vector total": `${((dxfAnalysisData?.cut_length?.total_mm || 0) / 1000).toFixed(3)} m`,
         "Area material": `${dxfAnalysisData?.bounding_box?.area || 0} mm²`,
-        "Solicitud urgente": formData.isUrgent,
+        "Solicitud urgente": Boolean(formData.isUrgent),
         "¿Quién proporciona el material?":
           formData.materialProvider === "arkcutt"
             ? {
                 proveedor: "Arkcutt",
-                "Material seleccionado": getSelectedMaterial(formData.selectedMaterial),
-                Grosor: formData.selectedThickness,
-                Color: formData.selectedColor,
+                "Material seleccionado": selectedMaterial,
+                Grosor: formData.selectedThickness || "No especificado",
+                Color: formData.selectedColor || "No especificado",
               }
             : {
                 proveedor: "Cliente",
-                "Fecha de entrega": formData.clientMaterial?.deliveryDate,
-                "Hora de entrega": formData.clientMaterial?.deliveryTime,
-                "Tipo de Material": formData.clientMaterial?.materialType,
-                Grosor: formData.clientMaterial?.thickness,
+                "Fecha de entrega": formData.clientMaterial?.deliveryDate || "No especificado",
+                "Hora de entrega": formData.clientMaterial?.deliveryTime || "No especificado",
+                "Tipo de Material": formData.clientMaterial?.materialType || "No especificado",
+                Grosor: formData.clientMaterial?.thickness || "No especificado",
               },
         Capas: processLayerData(),
         "Datos Recogida":
           formData.city === "home"
             ? {
                 tipo: "A domicilio",
-                nombre: formData.locationData?.name,
-                telefono: formData.locationData?.phone,
-                direccion: formData.locationData?.address,
-                ciudad: formData.locationData?.city,
-                codigo_postal: formData.locationData?.postalCode,
+                nombre: formData.locationData?.name || "No especificado",
+                telefono: formData.locationData?.phone || "No especificado",
+                direccion: formData.locationData?.address || "No especificado",
+                ciudad: formData.locationData?.city || "No especificado",
+                codigo_postal: formData.locationData?.postalCode || "No especificado",
               }
             : {
                 tipo: "Recogida en tienda",
-                ciudad_seleccionada: getSelectedCity(formData.city),
+                ciudad_seleccionada: selectedCity,
               },
       },
     }
@@ -168,15 +170,16 @@ export function ThankYouPage({
 
     setPdfGenerating(true)
     try {
-      const pdfBlob = await budgetClient.generatePDF(budget)
+      const completeFormData = generateFormDataJSON()
+      const pdfBlob = await budgetClient.generatePDF(completeFormData)
       const url = URL.createObjectURL(pdfBlob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `presupuesto-${budget?.presupuesto?.numero_presupuesto || requestNumber}.pdf`
+      link.download = `presupuesto-${getBudgetValue("numero_presupuesto", getBudgetValue("presupuesto.numero_presupuesto", requestNumber))}.pdf`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
-      alert("Error al generar el PDF. Inténtalo de nuevo.")
+      alert("Error al descargar el PDF del backend. Inténtalo de nuevo.")
     } finally {
       setPdfGenerating(false)
     }
@@ -242,9 +245,7 @@ export function ThankYouPage({
   return (
     <div className="w-full h-full flex flex-col bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
-      <div className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-[#E4E4E7]">
-        
-      </div>
+      <div className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-[#E4E4E7]"></div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -323,7 +324,7 @@ export function ThankYouPage({
                       <Euro className="h-6 w-6" />
                       {(getBudgetValue("data.total", getBudgetValue("total", 0)) as number).toFixed(2)}
                     </div>
-                    <p className="text-[14px] text-green-700">IVA incluido</p>
+                    <p className="text-[14px] text-green-700">IVA no incluido</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-green-200">

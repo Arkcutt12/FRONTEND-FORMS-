@@ -139,48 +139,48 @@ export class BudgetClient {
     }
   }
 
-  async generatePDF(budgetData: BudgetResponse): Promise<Blob> {
-    console.log("[v0] Starting PDF generation")
+  async generatePDF(completeFormData: any): Promise<Blob> {
+    console.log("[v0] Starting PDF download from backend")
 
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
 
-      const response = await fetch(`${this.baseUrl}/generate-pdf`, {
+      const response = await fetch(`${this.baseUrl}/download-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/pdf",
         },
-        body: JSON.stringify(budgetData),
+        body: JSON.stringify(completeFormData),
         signal: controller.signal,
       })
 
       clearTimeout(timeoutId)
-      console.log("[v0] PDF response status:", response.status)
+      console.log("[v0] PDF download response status:", response.status)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error("[v0] PDF error response:", errorText)
+        console.error("[v0] PDF download error response:", errorText)
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
       }
 
       const blob = await response.blob()
-      console.log("[v0] PDF generation successful, size:", blob.size)
+      console.log("[v0] PDF download successful, size:", blob.size)
       return blob
     } catch (error) {
-      console.error("[v0] PDF generation error:", error)
+      console.error("[v0] PDF download error:", error)
 
       if (error instanceof Error) {
         if (error.name === "AbortError") {
-          throw new Error("La generación del PDF está tardando demasiado. Por favor, inténtalo de nuevo.")
+          throw new Error("La descarga del PDF está tardando demasiado. Por favor, inténtalo de nuevo.")
         }
         if (error.message.includes("Failed to fetch")) {
-          throw new Error("No se pudo conectar con el servidor para generar el PDF. Verifica tu conexión a internet.")
+          throw new Error("No se pudo conectar con el servidor para descargar el PDF. Verifica tu conexión a internet.")
         }
       }
 
-      throw new Error("No se pudo generar el PDF. Inténtalo de nuevo más tarde.")
+      throw new Error("No se pudo descargar el PDF. Inténtalo de nuevo más tarde.")
     }
   }
 
