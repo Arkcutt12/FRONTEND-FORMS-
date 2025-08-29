@@ -449,7 +449,7 @@ export default function MaterialSelectionPage() {
                           <p className="text-[13px] text-[#52525B]">¿Quién proporcionará el material?</p>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="flex-col space-y-0">
                           <button
                             type="button"
                             onClick={() =>
@@ -462,7 +462,7 @@ export default function MaterialSelectionPage() {
                                 selectedColor: undefined,
                               }))
                             }
-                            className="w-full"
+                            className="w-full items-end justify-center flex-col h-24"
                           >
                             <Image
                               src={
@@ -489,7 +489,7 @@ export default function MaterialSelectionPage() {
                                 selectedColor: undefined,
                               }))
                             }
-                            className="w-full"
+                            className="w-full h-24"
                           >
                             <Image
                               src={

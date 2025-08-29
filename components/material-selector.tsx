@@ -165,7 +165,7 @@ export function MaterialSelector({
               className="w-full justify-between h-10 bg-transparent"
               onClick={() => setOpenDropdown(openDropdown === "thickness" ? null : "thickness")}
             >
-              <span className="text-[13px]">
+              <span className="text-[13px] font-normal">
                 {selectedThickness ? `${selectedThickness} ${selectedMaterialData?.unit}` : "Seleccionar grosor"}
               </span>
               <ChevronDown className="h-4 w-4" />
@@ -227,7 +227,7 @@ export function MaterialSelector({
             <p className="text-[13px] text-[#52525B]">Cada material tiene unas medidas de plancha máximas.</p>
           </div>
 
-          <div className="mt-4">
+          <div className="flex items-center justify-center w-72 h-44">
             <Image
               src="/images/sheet-size.png"
               alt="Tamaño de la plancha"

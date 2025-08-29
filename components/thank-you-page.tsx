@@ -243,33 +243,7 @@ export function ThankYouPage({
     <div className="w-full h-full flex flex-col bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
       <div className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-[#E4E4E7]">
-        <div className="flex justify-between items-center px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-md"
-              onClick={() => (window.location.href = "https://www.arkcutt.com/")}
-            >
-              <ArrowLeft className="h-[15px] w-[15px] text-[#52525B]" />
-            </Button>
-            <div className="bg-[#FAFAFA] px-1 py-0.5 rounded text-xs font-medium text-[#52525B] border border-[#E4E4E7]">
-              volver
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <h1 className="text-[16px] font-semibold text-[#18181B]">¡Presupuesto Generado!</h1>
-              <p className="text-[12px] text-[#52525B]">
-                #{getBudgetValue("numero_presupuesto", getBudgetValue("presupuesto.numero_presupuesto", requestNumber))}
-              </p>
-            </div>
-          </div>
-          <Badge className="bg-green-100 text-green-800 border-green-200">Listo</Badge>
-        </div>
+        
       </div>
 
       {/* Content */}
@@ -305,17 +279,25 @@ export function ThankYouPage({
               {/* Budget Summary */}
               <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-[18px] text-green-900 flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <CardTitle className="text-[18px] text-green-900 flex items-center gap-2 flex-shrink-0">
                       <Calculator className="h-5 w-5" />
-                      Presupuesto #
-                      {getBudgetValue(
-                        "numero_presupuesto",
-                        getBudgetValue("presupuesto.numero_presupuesto", requestNumber),
-                      )}
+                      <span className="truncate">
+                        Presupuesto #
+                        {getBudgetValue(
+                          "numero_presupuesto",
+                          getBudgetValue("presupuesto.numero_presupuesto", requestNumber),
+                        )}
+                      </span>
                     </CardTitle>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={handleGeneratePDF} disabled={pdfGenerating}>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGeneratePDF}
+                        disabled={pdfGenerating}
+                        className="flex-1 sm:flex-none bg-transparent"
+                      >
                         {pdfGenerating ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
@@ -323,7 +305,12 @@ export function ThankYouPage({
                         )}
                         PDF
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleShare}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleShare}
+                        className="flex-1 sm:flex-none bg-transparent"
+                      >
                         <Share2 className="h-4 w-4 mr-2" />
                         Compartir
                       </Button>
