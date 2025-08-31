@@ -462,7 +462,7 @@ export default function MaterialSelectionPage() {
                                 selectedColor: undefined,
                               }))
                             }
-                            className="w-full items-end justify-center flex-col h-24"
+                            className="w-full items-end justify-center flex-col h-auto"
                           >
                             <Image
                               src={
@@ -489,7 +489,7 @@ export default function MaterialSelectionPage() {
                                 selectedColor: undefined,
                               }))
                             }
-                            className="w-full h-24"
+                            className="w-full h-auto"
                           >
                             <Image
                               src={
