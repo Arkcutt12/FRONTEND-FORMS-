@@ -156,6 +156,23 @@ export function MaterialSelector({
     return selectedMaterialData?.colors || []
   }
 
+  const getSheetSizeImage = () => {
+    if (!selectedMaterialData) return "/images/sheet-size.png"
+
+    const { width, height } = selectedMaterialData.sheetSize
+
+    // Map sheet dimensions to corresponding images
+    if (width === 10 && height === 100) {
+      return "/images/sheet-10x100.png" // Madera Balsa
+    } else if (width === 60 && height === 100) {
+      return "/images/sheet-60x100.png" // Dm, Contrachapado, Metacrilato
+    } else if (width === 75) {
+      return "/images/sheet-75x100.png" // Cartón (75x105 -> use 75x100 as closest match)
+    }
+
+    return "/images/sheet-60x100.png" // Default fallback
+  }
+
   return (
     <div className="space-y-4">
       {/* Material Selection */}
@@ -284,8 +301,8 @@ export function MaterialSelector({
 
           <div className="mt-0 justify-start flex-col w-[512px] h-[299px] flex items-center justify-center">
             <Image
-              src="/images/sheet-size.png"
-              alt="Tamaño de la plancha"
+              src={getSheetSizeImage() || "/placeholder.svg"}
+              alt={`Tamaño de plancha ${selectedMaterialData?.sheetSize.width}x${selectedMaterialData?.sheetSize.height}cm`}
               width={512}
               height={299}
               className="w-[512px] h-[299px] object-contain"

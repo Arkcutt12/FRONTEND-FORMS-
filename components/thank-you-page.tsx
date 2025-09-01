@@ -110,8 +110,20 @@ export function ThankYouPage({
       }))
     }
 
-    const selectedMaterial = getSelectedMaterial(formData.selectedMaterial) || "No especificado"
+    const selectedMaterialRaw = getSelectedMaterial(formData.selectedMaterial) || "No especificado"
+    let selectedMaterial = selectedMaterialRaw
+
+    // Convert DM to Dm for backend compatibility
+    if (selectedMaterialRaw === "DM" || selectedMaterialRaw === "dm") {
+      selectedMaterial = "Dm"
+    }
+
     const selectedCity = getSelectedCity(formData.city) || "No especificado"
+
+    let selectedColor = formData.selectedColor || "No especificado"
+    if (selectedMaterial === "Dm") {
+      selectedColor = "natural" // Force natural color for Dm materials
+    }
 
     return {
       Cliente: {
@@ -133,7 +145,7 @@ export function ThankYouPage({
                 proveedor: "Arkcutt",
                 "Material seleccionado": selectedMaterial,
                 Grosor: formData.selectedThickness || "No especificado",
-                Color: formData.selectedColor || "No especificado",
+                Color: selectedColor,
               }
             : {
                 proveedor: "Cliente",

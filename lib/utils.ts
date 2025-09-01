@@ -10,7 +10,7 @@ export function getSelectedMaterial(materialId?: string): string {
     { id: "acrylic", name: "Metacrilato" },
     { id: "balsa", name: "Madera Balsa" },
     { id: "plywood", name: "Contrachapado" },
-    { id: "dm", name: "DM" },
+    { id: "Dm", name: "DM" },
     { id: "cardboard", name: "Cartón Gris" },
   ]
 

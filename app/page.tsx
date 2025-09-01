@@ -127,12 +127,12 @@ export default function MaterialSelectionPage() {
       ],
     },
     {
-      id: "dm",
+      id: "Dm",
       name: "DM",
       description: "Tablero de densidad media, superficie lisa ideal para acabados.",
       thicknessOptions: [2.5, 5, 8],
       unit: "mm",
-      colors: [{ id: "wood", name: "Color madera", color: "#D2B48C" }],
+      colors: [{ id: "natural", name: "Natural", color: "#D2B48C" }],
     },
     {
       id: "cardboard",
