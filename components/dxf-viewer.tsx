@@ -6,16 +6,16 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Upload,
-  PieChart,
   Download,
   AlertTriangle,
-  ExternalLink,
   ZoomIn,
   ZoomOut,
   Move,
   RotateCcw,
   Maximize2,
   X,
+  RefreshCw,
+  Clock,
 } from "lucide-react"
 import { FullscreenButton } from "@/components/fullscreen-button"
 import { FullscreenViewer } from "@/components/fullscreen-viewer"
@@ -34,16 +34,22 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     error,
     data: analysisData,
     isConnected,
+    retryCount,
+    maxRetries,
+    isRetrying,
     analyzeDxf,
     checkConnection,
     clearError,
-    errorAnalysis, // Datos del nuevo backend
+    errorAnalysis,
+    retryAnalysis,
   } = useDXFAnalysis()
 
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showValidEntities, setShowValidEntities] = useState(true)
   const [showPhantomEntities, setShowPhantomEntities] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const [loadingDots, setLoadingDots] = useState("")
 
   // Estados para zoom y pan - valores más conservadores
   const [zoom, setZoom] = useState(1)
@@ -53,6 +59,24 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
   const [panMode, setPanMode] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
   const [initialViewSet, setInitialViewSet] = useState(false)
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (isLoading || isRetrying) {
+      interval = setInterval(() => {
+        setLoadingDots((prev) => {
+          if (prev === "...") return ""
+          return prev + "."
+        })
+      }, 500)
+    } else {
+      setLoadingDots("")
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isLoading, isRetrying])
 
   useEffect(() => {
     checkConnection()
@@ -439,8 +463,6 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
               >
                 <Download className="h-4 w-4" />
               </Button>
-              
-              
             </>
           )}
           <Button
@@ -485,52 +507,98 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </div>
         )}
 
-        {/* Estados de carga y error */}
-        {!isConnected && !isLoading && (
+        {(isLoading || isRetrying) && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/90">
-            <div className="bg-white p-6 rounded-lg shadow-md max-w-md text-center">
-              <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-              <h3 className="text-[16px] font-medium text-[#18181B] mb-2">Conectando con Backend</h3>
-              <p className="text-[13px] text-[#52525B] mb-4">Verificando conexión con backend-dxf.onrender.com...</p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={checkConnection} variant="outline">
-                  Reintentar Conexión
-                </Button>
-                <Button onClick={openApiDocs} variant="ghost" size="sm">
-                  Ver API Docs
-                </Button>
+            <div className="flex flex-col items-center max-w-md text-center">
+              {/* Animated spinner */}
+              <div className="relative mb-6">
+                <div className="w-16 h-16 border-4 border-[#E4E4E7] border-t-[#18181B] rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[#18181B] rounded-full animate-pulse"></div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/80">
-            <div className="flex flex-col items-center">
-              <div className="w-10 h-10 border-4 border-[#E4E4E7] border-t-[#18181B] rounded-full animate-spin"></div>
-              <p className="mt-4 text-[13px] text-[#52525B]">Procesando archivo DXF...</p>
-              <p className="text-[11px] text-[#71717A]">Conectado con backend especializado</p>
+              {/* Progress indicator */}
+              <div className="w-full max-w-xs mb-4">
+                <div className="bg-[#E4E4E7] rounded-full h-2">
+                  <div
+                    className="bg-[#18181B] h-2 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(100, (retryCount / maxRetries) * 100 + 20)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Status messages */}
+              {isRetrying ? (
+                <>
+                  <h3 className="text-[16px] font-medium text-[#18181B] mb-2">Reintentando conexión{loadingDots}</h3>
+                  <p className="text-[13px] text-[#52525B] mb-2">
+                    Intento {retryCount} de {maxRetries}
+                  </p>
+                  <p className="text-[11px] text-[#71717A]">
+                    El backend puede tardar en responder. Reintentando automáticamente...
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-[16px] font-medium text-[#18181B] mb-2">Analizando archivo DXF{loadingDots}</h3>
+                  <p className="text-[13px] text-[#52525B] mb-2">Procesando geometrías y validando estructura</p>
+                  <p className="text-[11px] text-[#71717A]">Conectado con backend especializado</p>
+                </>
+              )}
+
               {file && (
-                <p className="text-[10px] text-[#A1A1AA] mt-1">
-                  {file.name} • {formatFileSize(file.size)}
-                </p>
+                <div className="mt-3 p-2 bg-white/50 rounded-lg">
+                  <p className="text-[10px] text-[#A1A1AA]">
+                    {file.name} • {formatFileSize(file.size)}
+                  </p>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {error && (
+        {error && !isLoading && !isRetrying && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA]/90">
-            <div className="bg-white p-6 rounded-lg shadow-md max-w-md">
-              <AlertTriangle className="h-8 w-8 text-red-500 mb-4" />
-              <h3 className="text-[16px] font-medium text-[#18181B] mb-2">Error de Procesamiento</h3>
+            <div className="bg-white p-6 rounded-lg shadow-md max-w-md text-center">
+              <div className="flex items-center justify-center mb-4">
+                {error.includes("varios intentos") ? (
+                  <Clock className="h-12 w-12 text-orange-500" />
+                ) : (
+                  <AlertTriangle className="h-12 w-12 text-red-500" />
+                )}
+              </div>
+
+              <h3 className="text-[16px] font-medium text-[#18181B] mb-2">
+                {error.includes("varios intentos") ? "Análisis Demorado" : "Error de Procesamiento"}
+              </h3>
+
               <p className="text-[13px] text-[#52525B] mb-4">{error}</p>
-              <div className="flex gap-2">
+
+              {error.includes("varios intentos") && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-[12px] text-blue-700">
+                    💡 <strong>Tip:</strong> Los backends pueden tardar en "despertar" si han estado inactivos. Esto es
+                    normal en servicios gratuitos.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-center">
+                <Button onClick={retryAnalysis} className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Volver a Intentar
+                </Button>
                 <Button onClick={clearError} variant="outline">
                   Cerrar
                 </Button>
-                <Button onClick={checkConnection}>Reintentar</Button>
               </div>
+
+              {retryCount > 0 && (
+                <p className="text-[10px] text-[#A1A1AA] mt-2">
+                  Intentos realizados: {retryCount}/{maxRetries}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -548,7 +616,7 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
         />
 
         {/* Estado inicial */}
-        {!file && !isLoading && !error && (
+        {!file && !isLoading && !error && !isRetrying && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <Upload className="h-16 w-16 text-[#A1A1AA] mx-auto mb-4" />

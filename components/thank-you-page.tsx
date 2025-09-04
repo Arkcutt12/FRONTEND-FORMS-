@@ -358,17 +358,6 @@ export function ThankYouPage({
                 </CardContent>
               </Card>
 
-              <Card className="border-yellow-200 bg-yellow-50">
-                <CardHeader>
-                  <CardTitle className="text-[16px] text-yellow-900">Debug: Respuesta de la API</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="text-[10px] text-yellow-800 overflow-auto max-h-40 bg-yellow-100 p-2 rounded">
-                    {JSON.stringify(budget, null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
-
               {/* Budget Breakdown */}
               {(budget?.desglose || budget?.breakdown) && (
                 <Card>
