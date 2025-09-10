@@ -37,6 +37,8 @@ export function ThankYouPage({
   const [budgetLoading, setBudgetLoading] = useState(true)
   const [budgetError, setBudgetError] = useState<string | null>(null)
   const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [feedback, setFeedback] = useState("")
+  const [feedbackSent, setFeedbackSent] = useState(false)
 
   const requestNumber = `DXF${Math.floor(100000 + Math.random() * 900000)}`
   const currentDate = new Date()
@@ -226,6 +228,15 @@ export function ThankYouPage({
 
   const handlePhoneSupport = () => {
     window.location.href = "tel:+34677649458"
+  }
+
+  const handleFeedbackSubmit = () => {
+    if (!feedback.trim()) {
+      alert("Por favor, escribe tu feedback antes de enviarlo.")
+      return
+    }
+
+    setFeedbackSent(true)
   }
 
   useEffect(() => {
@@ -584,6 +595,48 @@ export function ThankYouPage({
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Feedback Component */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader>
+              <CardTitle className="text-[16px] text-blue-900 flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Cuéntanos tu experiencia
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[13px] text-blue-800">
+                Tu opinión nos ayuda a mejorar. Comparte tu experiencia con el proceso de pedido.
+              </p>
+
+              {feedbackSent ? (
+                <div className="text-center py-4">
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-[14px] font-medium text-green-800">¡Gracias por tu feedback!</p>
+                  <p className="text-[12px] text-green-700">Esto nos ayudará a seguir mejorando.</p>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="Escribe aquí tu feedback sobre el proceso de pedido..."
+                    className="w-full h-24 p-3 text-[14px] border border-blue-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleFeedbackSubmit}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      size="sm"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Enviar Feedback
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

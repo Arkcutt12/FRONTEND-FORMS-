@@ -365,13 +365,20 @@ export default function MaterialSelectionPage() {
                           height={250}
                           className="w-[434px] h-[250px] object-contain"
                         />
-                        <Image
-                          src="/images/form-subtitle.png"
-                          alt="Criterios de pedido"
-                          width={434}
-                          height={24}
-                          className="w-[434px] h-[24px] object-contain"
-                        />
+                        <a
+                          href="https://www.arkcutt.com/criterios"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block cursor-pointer"
+                        >
+                          <Image
+                            src="/images/form-subtitle.png"
+                            alt="Criterios de pedido"
+                            width={434}
+                            height={24}
+                            className="w-[434px] h-[24px] object-contain hover:opacity-80 transition-opacity"
+                          />
+                        </a>
                       </div>
 
                       <div className="space-y-4">
