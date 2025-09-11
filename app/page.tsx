@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Info, AlertCircle } from "lucide-react"
+import { Info, AlertCircle, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,8 @@ import { ThankYouPage } from "@/components/thank-you-page"
 import { MaterialSelector } from "@/components/material-selector"
 import { LocationSelector } from "@/components/location-selector"
 import { useDXFAnalysis } from "@/hooks/use-dxf-analysis"
+import { testSupabaseConnection } from "@/lib/test-connection"
+import { formClient } from "@/lib/form-client"
 
 interface Material {
   id: string
@@ -74,6 +76,8 @@ export default function MaterialSelectionPage() {
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [thicknessError, setThicknessError] = useState("")
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionResult, setConnectionResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [showOrderSummary, setShowOrderSummary] = useState(false)
@@ -83,6 +87,7 @@ export default function MaterialSelectionPage() {
     lastName: string
     email: string
     phone: string
+    projectId?: string
   } | null>(null)
 
   const cities = [
@@ -188,19 +193,63 @@ export default function MaterialSelectionPage() {
     setShowOrderSummary(true)
   }
 
-  const handleOrderSummarySubmit = (personalData: {
+  const handleOrderSummarySubmit = async (personalData: {
     firstName: string
     lastName: string
     email: string
     phone: string
   }) => {
-    console.log("Form Data:", formData)
-    console.log("Personal Data:", personalData)
-    console.log("DXF Analysis Data:", dxfData)
+    try {
+      console.log("🚀 Enviando formulario a Supabase...")
+      console.log("Form Data:", formData)
+      console.log("Personal Data:", personalData)
+      console.log("DXF Analysis Data:", dxfData)
 
-    setSubmittedPersonalData(personalData)
-    setShowOrderSummary(false)
-    setShowRequestSuccess(true)
+      // Convertir datos del formulario al formato esperado por formClient
+      if (formData.files.length > 0 && dxfData) {
+        const submitData = {
+          clientName: `${personalData.firstName} ${personalData.lastName}`,
+          clientEmail: personalData.email,
+          clientPhone: personalData.phone,
+          dxfFile: formData.files[0], // Usar el primer archivo DXF
+          selectedMaterial: formData.selectedMaterial || 'dm',
+          materialThickness: formData.selectedThickness,
+          materialColor: formData.selectedColor || 'natural',
+          materialProvider: formData.materialProvider === 'arkcutt' ? 'Arkcutt' : 'Cliente',
+          clientMaterialDetails: formData.clientMaterial,
+          pickupType: formData.city === 'home' ? 'domicilio' : 'recogida',
+          pickupAddress: formData.locationData?.address,
+          pickupCity: formData.locationData?.city,
+          pickupPostalCode: formData.locationData?.postalCode,
+          pickupNotes: '',
+          isUrgent: formData.isUrgent || false,
+          specialRequirements: ''
+        }
+
+        console.log("📤 Datos a enviar:", submitData)
+        
+        const result = await formClient.submitForm(submitData)
+        
+        if (result.success) {
+          console.log("✅ Formulario enviado exitosamente:", result.projectId)
+          setSubmittedPersonalData({...personalData, projectId: result.projectId})
+        } else {
+          console.error("❌ Error enviando formulario:", result.error)
+          alert(`Error al enviar formulario: ${result.error}`)
+          return
+        }
+      } else {
+        console.warn("⚠️ No hay archivos DXF o datos de análisis")
+        setSubmittedPersonalData(personalData)
+      }
+
+      setShowOrderSummary(false)
+      setShowRequestSuccess(true)
+      
+    } catch (error) {
+      console.error("❌ Error general:", error)
+      alert(`Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+    }
   }
 
   const handleBackToForm = () => {
@@ -216,6 +265,25 @@ export default function MaterialSelectionPage() {
       isUrgent: false,
     })
     setPreviewFile(null)
+  }
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true)
+    setConnectionResult(null)
+    try {
+      console.log('🧪 Testing Supabase connection...')
+      const result = await testSupabaseConnection()
+      setConnectionResult(result)
+      console.log('🔍 Connection test result:', result)
+    } catch (error) {
+      console.error('❌ Connection test error:', error)
+      setConnectionResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      })
+    } finally {
+      setTestingConnection(false)
+    }
   }
 
   const isFormValid = () => {
@@ -372,6 +440,34 @@ export default function MaterialSelectionPage() {
                             className="w-[434px] h-[24px] object-contain hover:opacity-80 transition-opacity"
                           />
                         </a>
+                      </div>
+
+                      {/* Test Connection Button */}
+                      <div className="space-y-2">
+                        <Button 
+                          onClick={handleTestConnection}
+                          disabled={testingConnection}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          <Database className="h-4 w-4 mr-2" />
+                          {testingConnection ? 'Probando conexión...' : 'Test Supabase DB'}
+                        </Button>
+                        
+                        {connectionResult && (
+                          <div className={`p-2 rounded text-xs ${
+                            connectionResult.success 
+                              ? 'bg-green-50 text-green-700 border border-green-200' 
+                              : 'bg-red-50 text-red-700 border border-red-200'
+                          }`}>
+                            {connectionResult.success ? (
+                              <span>✅ {connectionResult.message}</span>
+                            ) : (
+                              <span>❌ {connectionResult.error}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-4">
