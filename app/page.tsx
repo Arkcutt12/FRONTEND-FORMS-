@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Info, AlertCircle, Database } from "lucide-react"
+import { Info, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,6 @@ import { ThankYouPage } from "@/components/thank-you-page"
 import { MaterialSelector } from "@/components/material-selector"
 import { LocationSelector } from "@/components/location-selector"
 import { useDXFAnalysis } from "@/hooks/use-dxf-analysis"
-import { testSupabaseConnection } from "@/lib/test-connection"
 import { formClient } from "@/lib/form-client"
 
 interface Material {
@@ -76,8 +75,6 @@ export default function MaterialSelectionPage() {
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [thicknessError, setThicknessError] = useState("")
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [testingConnection, setTestingConnection] = useState(false)
-  const [connectionResult, setConnectionResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [showOrderSummary, setShowOrderSummary] = useState(false)
@@ -267,24 +264,6 @@ export default function MaterialSelectionPage() {
     setPreviewFile(null)
   }
 
-  const handleTestConnection = async () => {
-    setTestingConnection(true)
-    setConnectionResult(null)
-    try {
-      console.log('🧪 Testing Supabase connection...')
-      const result = await testSupabaseConnection()
-      setConnectionResult(result)
-      console.log('🔍 Connection test result:', result)
-    } catch (error) {
-      console.error('❌ Connection test error:', error)
-      setConnectionResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido'
-      })
-    } finally {
-      setTestingConnection(false)
-    }
-  }
 
   const isFormValid = () => {
     if (formData.files.length === 0) return false
@@ -442,33 +421,6 @@ export default function MaterialSelectionPage() {
                         </a>
                       </div>
 
-                      {/* Test Connection Button */}
-                      <div className="space-y-2">
-                        <Button 
-                          onClick={handleTestConnection}
-                          disabled={testingConnection}
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                        >
-                          <Database className="h-4 w-4 mr-2" />
-                          {testingConnection ? 'Probando conexión...' : 'Test Supabase DB'}
-                        </Button>
-                        
-                        {connectionResult && (
-                          <div className={`p-2 rounded text-xs ${
-                            connectionResult.success 
-                              ? 'bg-green-50 text-green-700 border border-green-200' 
-                              : 'bg-red-50 text-red-700 border border-red-200'
-                          }`}>
-                            {connectionResult.success ? (
-                              <span>✅ {connectionResult.message}</span>
-                            ) : (
-                              <span>❌ {connectionResult.error}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
 
                       <div className="space-y-4">
                         <div className="space-y-1">
