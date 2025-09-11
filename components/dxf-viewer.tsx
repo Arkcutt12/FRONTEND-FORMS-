@@ -40,7 +40,6 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
     analyzeDxf,
     checkConnection,
     clearError,
-    errorAnalysis,
     retryAnalysis,
   } = useDXFAnalysis()
 
@@ -476,14 +475,10 @@ export function DXFViewer({ file, onClose }: DXFViewerProps) {
           </Button>
         </div>
 
-        {/* Panel de información - usando DXFInfoCard con datos del nuevo backend */}
+        {/* Panel de información - usando DXFInfoCard con datos del backend */}
         {metrics && (
           <div className="absolute top-4 left-16 z-10 w-80">
-            <DXFInfoCard
-              metrics={metrics}
-              fileName={file?.name}
-              errorAnalysis={errorAnalysis} // Pasar datos del nuevo backend
-            />
+            <DXFInfoCard metrics={metrics} fileName={file?.name} />
           </div>
         )}
 

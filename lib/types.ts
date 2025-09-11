@@ -35,5 +35,4 @@ export interface ThankYouPageProps {
   formData: FormData
   onClose: () => void
   dxfAnalysisData?: any | null
-  dxfErrorAnalysis?: any | null
 }

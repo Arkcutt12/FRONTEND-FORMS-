@@ -58,7 +58,6 @@ export default function MaterialSelectionPage() {
     isLoading: isDXFAnalyzing,
     error: dxfError,
     data: dxfData,
-    errorAnalysis: dxfErrorAnalysis,
     isConnected: isDXFConnected,
     analyzeDxf,
     clearData: clearDXFData,
@@ -198,7 +197,6 @@ export default function MaterialSelectionPage() {
     console.log("Form Data:", formData)
     console.log("Personal Data:", personalData)
     console.log("DXF Analysis Data:", dxfData)
-    console.log("DXF Error Analysis:", dxfErrorAnalysis)
 
     setSubmittedPersonalData(personalData)
     setShowOrderSummary(false)
@@ -234,12 +232,8 @@ export default function MaterialSelectionPage() {
         console.log("[v0] Form invalid: DXF analysis error:", dxfError)
         return false
       }
-      if (!dxfData || !dxfErrorAnalysis) {
+      if (!dxfData) {
         console.log("[v0] Form invalid: DXF analysis not completed")
-        return false
-      }
-      if (dxfErrorAnalysis.validation_status === "ERROR") {
-        console.log("[v0] Form invalid: DXF file has critical errors")
         return false
       }
     }
@@ -321,7 +315,6 @@ export default function MaterialSelectionPage() {
               formData={formData}
               onClose={handleCloseSuccess}
               dxfAnalysisData={dxfData}
-              dxfErrorAnalysis={dxfErrorAnalysis}
             />
           )}
 
@@ -417,25 +410,7 @@ export default function MaterialSelectionPage() {
                               </Alert>
                             )}
 
-                            {dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "ERROR" && (
-                              <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                  El archivo DXF tiene errores críticos que deben corregirse antes de continuar.
-                                </AlertDescription>
-                              </Alert>
-                            )}
-
-                            {dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "WARNING" && (
-                              <Alert>
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                  El archivo DXF tiene advertencias. Se recomienda revisar antes de continuar.
-                                </AlertDescription>
-                              </Alert>
-                            )}
-
-                            {dxfData && dxfErrorAnalysis && dxfErrorAnalysis.validation_status === "VALID" && (
+                            {dxfData && (
                               <Alert className="border-green-200 bg-green-50">
                                 <AlertCircle className="h-4 w-4 text-green-600" />
                                 <AlertDescription className="text-green-800">
