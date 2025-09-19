@@ -18,7 +18,6 @@ import { ThankYouPage } from "@/components/thank-you-page"
 import { MaterialSelector } from "@/components/material-selector"
 import { LocationSelector } from "@/components/location-selector"
 import { useDXFAnalysis } from "@/hooks/use-dxf-analysis"
-import { formClient } from "@/lib/form-client"
 
 interface Material {
   id: string
@@ -84,7 +83,6 @@ export default function MaterialSelectionPage() {
     lastName: string
     email: string
     phone: string
-    projectId?: string
   } | null>(null)
 
   const cities = [
@@ -190,63 +188,19 @@ export default function MaterialSelectionPage() {
     setShowOrderSummary(true)
   }
 
-  const handleOrderSummarySubmit = async (personalData: {
+  const handleOrderSummarySubmit = (personalData: {
     firstName: string
     lastName: string
     email: string
     phone: string
   }) => {
-    try {
-      console.log("🚀 Enviando formulario a Supabase...")
-      console.log("Form Data:", formData)
-      console.log("Personal Data:", personalData)
-      console.log("DXF Analysis Data:", dxfData)
+    console.log("Form Data:", formData)
+    console.log("Personal Data:", personalData)
+    console.log("DXF Analysis Data:", dxfData)
 
-      // Convertir datos del formulario al formato esperado por formClient
-      if (formData.files.length > 0 && dxfData) {
-        const submitData = {
-          clientName: `${personalData.firstName} ${personalData.lastName}`,
-          clientEmail: personalData.email,
-          clientPhone: personalData.phone,
-          dxfFile: formData.files[0], // Usar el primer archivo DXF
-          selectedMaterial: formData.selectedMaterial || 'dm',
-          materialThickness: formData.selectedThickness,
-          materialColor: formData.selectedColor || 'natural',
-          materialProvider: formData.materialProvider === 'arkcutt' ? 'Arkcutt' : 'Cliente',
-          clientMaterialDetails: formData.clientMaterial,
-          pickupType: formData.city === 'home' ? 'domicilio' : 'recogida',
-          pickupAddress: formData.locationData?.address,
-          pickupCity: formData.locationData?.city,
-          pickupPostalCode: formData.locationData?.postalCode,
-          pickupNotes: '',
-          isUrgent: formData.isUrgent || false,
-          specialRequirements: ''
-        }
-
-        console.log("📤 Datos a enviar:", submitData)
-        
-        const result = await formClient.submitForm(submitData)
-        
-        if (result.success) {
-          console.log("✅ Formulario enviado exitosamente:", result.projectId)
-          setSubmittedPersonalData({...personalData, projectId: result.projectId})
-        } else {
-          console.error("❌ Error enviando formulario:", result.error)
-          alert(`Error al enviar formulario: ${result.error}`)
-          return
-        }
-      } else {
-        console.warn("⚠️ No hay archivos DXF o datos de análisis")
-        setSubmittedPersonalData(personalData)
-      }
-
-      setShowOrderSummary(false)
-      setShowRequestSuccess(true)
-      
-    } catch (error) {
-      console.error("❌ Error general:", error)
-      alert(`Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`)
-    }
+    setSubmittedPersonalData(personalData)
+    setShowOrderSummary(false)
+    setShowRequestSuccess(true)
   }
 
   const handleBackToForm = () => {
@@ -263,7 +217,6 @@ export default function MaterialSelectionPage() {
     })
     setPreviewFile(null)
   }
-
 
   const isFormValid = () => {
     if (formData.files.length === 0) return false
@@ -420,7 +373,6 @@ export default function MaterialSelectionPage() {
                           />
                         </a>
                       </div>
-
 
                       <div className="space-y-4">
                         <div className="space-y-1">
