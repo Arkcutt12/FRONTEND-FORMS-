@@ -4,11 +4,11 @@ import { v4 as uuidv4 } from 'uuid'
 import type { CreatePedidoPayload, CreatePedidoResponse, Pedido } from '../../../lib/types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   db: {
-    schema: 'pedidos'
+    schema: 'Pedidos'
   }
 })
 
@@ -151,9 +151,9 @@ export async function POST(request: NextRequest) {
 
     console.log("[crear-pedido] Insertando en base de datos")
 
-    // Insertar en la tabla pedidos
+    // Insertar en la tabla PEDIDOS
     const insertRes = await supabase
-      .from('pedidos')
+      .from('PEDIDOS')
       .insert([fila])
       .select()
       .single()
