@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { guardarPedidoCompleto, convertirFormDataAPedido } from "../../../lib/pedido-client"
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,50 +41,66 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Budget API proxy: External API success response received")
     console.log("[v0] Budget API proxy: Response data:", JSON.stringify(data, null, 2))
 
-    // Guardar pedido asíncronamente siempre que tengamos datos del cliente (sin bloquear la respuesta)
+    // Guardar pedido asíncronamente siempre que tengamos una respuesta exitosa (sin bloquear la respuesta)
     const precioTotal = data?.data?.total || data?.precio_total || data?.total
     console.log("[v0] Budget API proxy: Checking conditions - total:", precioTotal, "success:", data?.success, "data exists:", !!data)
-    if (data && body && (body.cliente || body.email || body.mail)) {
+    console.log("[v0] Budget API proxy: Body keys:", Object.keys(body || {}))
+
+    // Condición más flexible: si hay datos y respuesta exitosa del backend
+    if (data && (data.success || precioTotal > 0) && body && Object.keys(body).length > 0) {
       // Llamar save-order de manera asíncrona sin esperar la respuesta
       setImmediate(async () => {
         try {
           console.log("[v0] Budget API proxy: Guardando pedido asíncronamente")
 
-          // Preparar datos para save-order
-          const saveOrderPayload = {
-            cliente: body.cliente || {
-              firstName: body.nombre || "Cliente",
-              lastName: body.apellido || "",
-              email: body.email || body.mail || "cliente@example.com",
-              phone: body.telefono || body.phone || "600000000"
+          // Extraer datos del cliente de cualquier estructura posible
+          const clienteData = body.cliente || {
+            firstName: body.nombre || body.personal?.firstName || "Cliente",
+            lastName: body.apellido || body.personal?.lastName || "",
+            email: body.email || body.mail || body.personal?.email || "cliente@example.com",
+            phone: body.telefono || body.phone || body.personal?.phone || "600000000"
+          }
+
+          console.log("[v0] Budget API proxy: Datos del cliente extraídos:", clienteData)
+
+          // Preparar el payload para crear pedido
+          const pedidoPayload = convertirFormDataAPedido(
+            body.formData || body.pedido || body,
+            clienteData,
+            precioTotal,
+            body.analisisDxf || body.dxfData || {
+              archivo_validado: true,
+              timestamp: new Date().toISOString(),
+              fuente: "frontend-form-budget"
             },
-            formData: body.formData || body.pedido || body,
-            presupuesto: {
-              ...data,
-              precio_total: precioTotal, // Agregar el precio en el formato esperado
-              total: precioTotal
-            },
-            analisisDxf: body.analisisDxf || body.dxfData,
-            archivo: body.archivo || {
-              filename: body.filename || "archivo.dxf",
-              content: Buffer.from(`archivo-${Date.now()}`).toString('base64')
+            data
+          )
+
+          // Asegurar que tenemos archivo
+          if (!pedidoPayload.archivo || !pedidoPayload.archivo.content) {
+            pedidoPayload.archivo = {
+              filename: body.filename || body.files?.[0]?.name || "archivo.dxf",
+              content: Buffer.from(`archivo-placeholder-${Date.now()}`)
             }
           }
 
-          const saveResponse = await fetch(`http://localhost:${process.env.PORT || 3001}/api/save-order`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(saveOrderPayload)
+          console.log("[v0] Budget API proxy: Payload preparado para guardar:", {
+            nombre: pedidoPayload.nombre,
+            email: pedidoPayload.mail,
+            precio: pedidoPayload["presupuesto-final"],
+            archivo: pedidoPayload.archivo.filename
           })
 
-          if (saveResponse.ok) {
-            const saveResult = await saveResponse.json()
-            console.log("[v0] Budget API proxy: Pedido guardado exitosamente:", saveResult.pedidoId)
+          // Llamar directamente a la función de guardado
+          const resultado = await guardarPedidoCompleto(pedidoPayload)
+
+          if (resultado.ok) {
+            console.log("[v0] Budget API proxy: ✅ Pedido guardado exitosamente:", resultado.pedidoId)
           } else {
-            console.error("[v0] Budget API proxy: Error guardando pedido:", await saveResponse.text())
+            console.error("[v0] Budget API proxy: ❌ Error guardando pedido:", resultado.error)
           }
         } catch (error) {
-          console.error("[v0] Budget API proxy: Error en guardado asíncrono:", error)
+          console.error("[v0] Budget API proxy: ❌ Error en guardado asíncrono:", error)
         }
       })
     }
