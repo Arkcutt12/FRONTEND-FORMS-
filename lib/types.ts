@@ -37,18 +37,18 @@ export interface ThankYouPageProps {
   dxfAnalysisData?: any | null
 }
 
-// Esquema para la tabla pedidos en Supabase (nombres exactos de columnas)
+// Esquema para la tabla PEDIDOS en Supabase (nombres exactos de columnas)
 export interface Pedido {
   id: string // UUID generado por servidor
-  createdAt: string // timestamp del servidor
-  nombre: string // obligatorio
+  created_at: string // timestamp del servidor
+  nombre?: string | null // obligatorio
   apellido?: string | null
-  mail: string // obligatorio, validar email
-  teléfono: string // obligatorio, validar formato
-  archivo: string // URL resultante del upload al bucket
+  mail?: string | null // obligatorio, validar email
+  teléfono?: string | null // obligatorio, validar formato
+  archivo?: string | null // URL resultante del upload al bucket
   "quien-material"?: string | null // "arkcutt" | "cliente"
   material?: string | null
-  grosor?: string | number | null
+  grosor?: string | null
   color?: string | null
   "fecha-cliente"?: string | null // date - solo si quien_material == cliente
   "hora-cliente"?: string | null // solo si quien_material == cliente
@@ -56,13 +56,13 @@ export interface Pedido {
   dirección?: string | null // solo si sitio_recogida == "a domicilio"
   ciudad?: string | null // solo si sitio_recogida == "a domicilio"
   "codigo-postal"?: string | null // solo si sitio_recogida == "a domicilio"
-  "telefono-contacto"?: string | null // solo si sitio_recogida == "a domicilio"
-  "reserva-urgente": boolean
+  "teléfono-contacto"?: string | null // solo si sitio_recogida == "a domicilio"
+  "reserva-urgente"?: string | null // text en vez de boolean
   "fecha-recogida"?: string | null // date
   "hora-recogida"?: string | null
-  "presupuesto-final": number // total calculado
-  "datos-analisis-dxf": any // json
-  "datos-presupuesto": any // json
+  "presupuesto-final"?: number | null // total calculado
+  "datos-analisis-dxf"?: any | null // json
+  "datos-presupuesto"?: any | null // json
   feedback?: string | null
 }
 

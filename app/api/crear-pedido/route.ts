@@ -120,10 +120,8 @@ export async function POST(request: NextRequest) {
 
     console.log("[crear-pedido] URL del archivo obtenida:", archivoUrl)
 
-    // Construir objeto para insertar en la DB
+    // Construir objeto para insertar en la DB (usar nombres de columna exactos)
     const fila: Partial<Pedido> = {
-      id: pedidoId,
-      createdAt: new Date().toISOString(),
       nombre: body.nombre,
       apellido: body.apellido || null,
       mail: body.mail,
@@ -139,8 +137,8 @@ export async function POST(request: NextRequest) {
       dirección: body.dirección || null,
       ciudad: body.ciudad || null,
       "codigo-postal": body["codigo-postal"] || null,
-      "telefono-contacto": body["telefono-contacto"] || null,
-      "reserva-urgente": !!body["reserva-urgente"],
+      "teléfono-contacto": body["telefono-contacto"] || null,
+      "reserva-urgente": body["reserva-urgente"] ? "true" : "false", // text field
       "fecha-recogida": body["fecha-recogida"] || null,
       "hora-recogida": body["hora-recogida"] || null,
       "presupuesto-final": Number(body["presupuesto-final"]),

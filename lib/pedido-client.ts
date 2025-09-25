@@ -107,10 +107,8 @@ export async function guardarPedidoCompleto(payload: CreatePedidoPayload): Promi
 
     console.log("[pedido-client] URL del archivo obtenida:", archivoUrl)
 
-    // Construir objeto para insertar en la DB
+    // Construir objeto para insertar en la DB (usar nombres de columna exactos)
     const fila: Partial<Pedido> = {
-      id: pedidoId,
-      createdAt: new Date().toISOString(),
       nombre: payload.nombre,
       apellido: payload.apellido || null,
       mail: payload.mail,
@@ -126,8 +124,8 @@ export async function guardarPedidoCompleto(payload: CreatePedidoPayload): Promi
       dirección: payload.dirección || null,
       ciudad: payload.ciudad || null,
       "codigo-postal": payload["codigo-postal"] || null,
-      "telefono-contacto": payload["telefono-contacto"] || null,
-      "reserva-urgente": !!payload["reserva-urgente"],
+      "teléfono-contacto": payload["telefono-contacto"] || null,
+      "reserva-urgente": payload["reserva-urgente"] ? "true" : "false", // text field
       "fecha-recogida": payload["fecha-recogida"] || null,
       "hora-recogida": payload["hora-recogida"] || null,
       "presupuesto-final": Number(payload["presupuesto-final"]),
