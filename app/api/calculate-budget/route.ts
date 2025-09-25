@@ -6,6 +6,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     console.log("[v0] Budget API proxy: Request body received", { hasData: !!body })
+    console.log("[v0] Budget API proxy: Full request body:", JSON.stringify(body, null, 2))
 
     const externalApiUrl = "https://calculadora-presupuestos-laser.onrender.com/calculate"
     console.log("[v0] Budget API proxy: Calling external API:", externalApiUrl)
@@ -37,9 +38,12 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
     console.log("[v0] Budget API proxy: External API success response received")
+    console.log("[v0] Budget API proxy: Response data:", JSON.stringify(data, null, 2))
 
-    // Si el cálculo fue exitoso, guardar pedido asíncronamente (sin bloquear la respuesta)
-    if (data && (data.precio_total || data.success)) {
+    // Guardar pedido asíncronamente siempre que tengamos datos del cliente (sin bloquear la respuesta)
+    const precioTotal = data?.data?.total || data?.precio_total || data?.total
+    console.log("[v0] Budget API proxy: Checking conditions - total:", precioTotal, "success:", data?.success, "data exists:", !!data)
+    if (data && body && (body.cliente || body.email || body.mail)) {
       // Llamar save-order de manera asíncrona sin esperar la respuesta
       setImmediate(async () => {
         try {
@@ -54,7 +58,11 @@ export async function POST(request: NextRequest) {
               phone: body.telefono || body.phone || "600000000"
             },
             formData: body.formData || body.pedido || body,
-            presupuesto: data,
+            presupuesto: {
+              ...data,
+              precio_total: precioTotal, // Agregar el precio en el formato esperado
+              total: precioTotal
+            },
             analisisDxf: body.analisisDxf || body.dxfData,
             archivo: body.archivo || {
               filename: body.filename || "archivo.dxf",

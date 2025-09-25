@@ -183,10 +183,10 @@ export function convertirFormDataAPedido(
   datosPresupuesto: any
 ): CreatePedidoPayload {
   return {
-    nombre: personalData.firstName,
-    apellido: personalData.lastName,
-    mail: personalData.email,
-    teléfono: personalData.phone,
+    nombre: personalData.firstName || personalData.nombre || "Cliente",
+    apellido: personalData.lastName || personalData.apellido || "",
+    mail: personalData.email || personalData.mail || "cliente@example.com",
+    teléfono: personalData.phone || personalData.telefono || "600000000",
     archivo: {
       filename: formData.files?.[0]?.name || 'archivo.dxf',
       content: '' // Este se debe agregar por separado

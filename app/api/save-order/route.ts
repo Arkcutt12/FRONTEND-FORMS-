@@ -62,11 +62,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!body.presupuesto.precio_total) {
-      return NextResponse.json({
-        ok: false,
-        error: "El presupuesto debe tener un precio_total"
-      }, { status: 400 })
+    // Si no hay precio_total válido, usar un valor por defecto de 0
+    const precioFinal = body.presupuesto.precio_total ||
+                       body.presupuesto.total ||
+                       body.presupuesto.data?.total ||
+                       body.presupuesto.precio_total_estimado ||
+                       0
+
+    if (precioFinal === 0) {
+      console.log("[save-order] Guardando pedido sin presupuesto válido (precio = 0)")
     }
 
     console.log("[save-order] Datos recibidos para:", body.cliente.email)
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
     const pedidoPayload = convertirFormDataAPedido(
       body.formData,
       body.cliente,
-      body.presupuesto.precio_total,
+      precioFinal,
       body.analisisDxf || {
         archivo_validado: true,
         timestamp: new Date().toISOString(),
