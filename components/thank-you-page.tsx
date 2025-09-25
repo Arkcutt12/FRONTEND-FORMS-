@@ -44,6 +44,54 @@ export function ThankYouPage({
   const currentDate = new Date()
   const budgetClient = new BudgetClient()
 
+  const saveOrderToSupabase = async (formDataPayload: any, budgetResponse: BudgetResponse) => {
+    try {
+      console.log("[v0] Guardando pedido en Supabase...")
+
+      const saveOrderPayload = {
+        cliente: {
+          firstName: personalData.firstName || "Cliente",
+          lastName: personalData.lastName || "",
+          email: personalData.email || "cliente@example.com",
+          phone: personalData.phone || "600000000"
+        },
+        formData: formData,
+        presupuesto: budgetResponse,
+        analisisDxf: dxfAnalysisData || {
+          archivo_validado: true,
+          timestamp: new Date().toISOString(),
+          fuente: "frontend-thank-you-page"
+        },
+        archivo: formData.files?.[0] ? {
+          filename: formData.files[0].name,
+          content: Buffer.from(`archivo-${Date.now()}`).toString('base64') // Placeholder
+        } : undefined
+      }
+
+      console.log("[v0] Payload para save-order:", {
+        cliente: saveOrderPayload.cliente.email,
+        precio: budgetResponse.data?.total || budgetResponse.total || 0,
+        archivo: saveOrderPayload.archivo?.filename || "no-file"
+      })
+
+      const response = await fetch('/api/save-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveOrderPayload)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log("[v0] ✅ Pedido guardado exitosamente en Supabase:", result.pedidoId)
+      } else {
+        const errorText = await response.text()
+        console.error("[v0] ❌ Error guardando pedido:", errorText)
+      }
+    } catch (error) {
+      console.error("[v0] ❌ Error en saveOrderToSupabase:", error)
+    }
+  }
+
   const calculateBudget = async () => {
     if (!dxfAnalysisData) {
       setBudgetError("No se pueden calcular los costos sin análisis DXF")
@@ -76,6 +124,12 @@ export function ThankYouPage({
       }
 
       setBudget(budgetResponse)
+
+      // Guardar automáticamente en Supabase si el presupuesto fue exitoso
+      if (budgetResponse && (budgetResponse.success || budgetResponse.data?.total > 0 || budgetResponse.total > 0)) {
+        console.log("[v0] Presupuesto exitoso, guardando en Supabase...")
+        saveOrderToSupabase(completeFormData, budgetResponse)
+      }
     } catch (error) {
       console.log("[v0] Budget calculation error:", error)
       setBudgetError(error instanceof Error ? error.message : "Error desconocido")
