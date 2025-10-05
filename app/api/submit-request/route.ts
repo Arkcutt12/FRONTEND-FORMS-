@@ -23,7 +23,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Submit Request API: Solicitud generada con ID: ${requestId}`)
 
-    // Por ahora, simularemos el proceso (como estaba originalmente)
+    // Aquí podrías:
+    // 1. Guardar la solicitud en base de datos
+    // 2. Enviar email de confirmación al cliente
+    // 3. Notificar al equipo de producción
+    // 4. Calcular presupuesto automáticamente
+
+    // Por ahora, simularemos el proceso
     const response: SubmitRequestResponse = {
       success: true,
       request_id: requestId,

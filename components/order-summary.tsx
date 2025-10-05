@@ -3,7 +3,19 @@
 import type React from "react"
 
 import { useState } from "react"
-import { ArrowLeft, FileIcon, User, Mail, Phone, MapPin, Package, Clock, Zap, CheckCircle } from "lucide-react"
+import {
+  ArrowLeft,
+  FileIcon,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Package,
+  Clock,
+  Zap,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
@@ -48,9 +60,10 @@ interface OrderSummaryProps {
   materials: Material[]
   onBack: () => void
   onSubmit: (personalData: PersonalData) => void
+  dxfAnalysisData?: any // Added DXF analysis data prop
 }
 
-export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSummaryProps) {
+export function OrderSummary({ formData, materials, onBack, onSubmit, dxfAnalysisData }: OrderSummaryProps) {
   const [personalData, setPersonalData] = useState<PersonalData>({
     firstName: "",
     lastName: "",
@@ -58,6 +71,7 @@ export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSum
     phone: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null) // Added error state
 
   const cities = [
     { id: "madrid", name: "Madrid" },
@@ -97,7 +111,7 @@ export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSum
     return fileName.substring(lastDotIndex)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate form before submitting
@@ -106,12 +120,45 @@ export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSum
     }
 
     setIsSubmitting(true)
+    setSubmitError(null)
 
-    // Simulate submission delay
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      console.log("[v0] Submitting order to Supabase...")
+
+      const formDataToSend = {
+        ...formData,
+        fileNames: formData.files.map((f) => f.name),
+        files: undefined, // Remove File objects as they can't be serialized
+      }
+
+      const response = await fetch("/api/submit-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalData,
+          formData: formDataToSend,
+          dxfData: dxfAnalysisData,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al enviar la solicitud")
+      }
+
+      console.log("[v0] Order saved successfully:", result)
+
+      // Success - proceed to thank you page
       onSubmit(personalData)
-    }, 2000)
+    } catch (error) {
+      console.error("[v0] Error submitting order:", error)
+      setSubmitError(error instanceof Error ? error.message : "Error al enviar la solicitud")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isFormValid = () => {
@@ -126,7 +173,10 @@ export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSum
   return (
     <div className="w-full bg-white flex flex-col h-full">
       <div className="bg-white border-b border-[#E4E4E7] flex-shrink-0">
-        
+        <Button variant="outline" className="text-[13px] font-medium text-[#18181B] bg-transparent" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver
+        </Button>
         <Separator />
       </div>
 
@@ -377,6 +427,18 @@ export function OrderSummary({ formData, materials, onBack, onSubmit }: OrderSum
                 </div>
               </div>
             </div>
+
+            {submitError && (
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div>
+                    <h4 className="text-[13px] font-medium text-red-900 mb-1">Error al enviar</h4>
+                    <p className="text-[12px] text-red-800">{submitError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Información Adicional */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">

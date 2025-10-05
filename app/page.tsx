@@ -306,6 +306,7 @@ export default function MaterialSelectionPage() {
               materials={materials}
               onBack={handleBackToForm}
               onSubmit={handleOrderSummarySubmit}
+              dxfAnalysisData={dxfData} // Pass DXF analysis data to OrderSummary
             />
           )}
 
