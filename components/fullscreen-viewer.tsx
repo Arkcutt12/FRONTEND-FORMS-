@@ -2,8 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Minus, Plus, RotateCcw } from "lucide-react"
-import { ArrowsReduceDiagonal } from "@medusajs/icons"
+import { ArrowLeft, Minus, Plus, RotateCcw, Minimize2 } from "lucide-react"
 import Image from "next/image"
 
 interface FullscreenViewerProps {
@@ -94,7 +93,7 @@ export function FullscreenViewer({ children, isOpen, onClose, title = "Servicio 
           onClick={onClose}
           title="Salir de pantalla completa"
         >
-          <ArrowsReduceDiagonal className="h-[15px] w-[15px] text-[#52525B]" />
+          <Minimize2 className="h-[15px] w-[15px] text-[#52525B]" />
         </Button>
 
         {/* Zoom controls */}
