@@ -19,17 +19,20 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  Info,
 } from "lucide-react"
 import { useState } from "react"
 import type { DXFMetrics } from "@/lib/dxf-loader"
+import type { DXFErrorAnalysisResponse } from "@/lib/api-client"
 
 interface DXFInfoCardProps {
   metrics: DXFMetrics
   fileName?: string
   onSheetSizeChange?: (width: number, height: number) => void
+  errorAnalysis?: DXFErrorAnalysisResponse | null // Nueva prop opcional
 }
 
-export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCardProps) {
+export function DXFInfoCard({ metrics, fileName, onSheetSizeChange, errorAnalysis }: DXFInfoCardProps) {
   const [sheetWidth, setSheetWidth] = useState(600)
   const [sheetHeight, setSheetHeight] = useState(400)
   const [showSheetConfig, setShowSheetConfig] = useState(false)
@@ -90,10 +93,69 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
     )
   }
 
-  const getQualityStatus = () => {
+  // Función mejorada que integra datos del nuevo backend
+  const getEnhancedQualityStatus = () => {
     const totalFiltered = getTotalFiltered()
     const phantomCount = metrics.filteredEntities.phantomEntities
 
+    // Si tenemos datos del análisis de errores, los usamos para enriquecer la información
+    if (errorAnalysis) {
+      const { validation_status, overall_score, errors } = errorAnalysis
+      const criticalErrors = errors.filter((e) => e.type === "CRITICAL").length
+      const warnings = errors.filter((e) => e.type === "WARNING").length
+
+      if (validation_status === "ERROR" || criticalErrors > 0) {
+        return {
+          status: "error",
+          color: "text-red-600",
+          bgColor: "bg-red-50 border-red-200",
+          icon: AlertTriangle,
+          label: "Errores Críticos",
+          score: overall_score,
+          details: `${criticalErrors} errores críticos detectados`,
+          hasBackendData: true,
+        }
+      }
+
+      if (validation_status === "WARNING" || warnings > 0) {
+        return {
+          status: "warning",
+          color: "text-yellow-600",
+          bgColor: "bg-yellow-50 border-yellow-200",
+          icon: Zap,
+          label: "Advertencias",
+          score: overall_score,
+          details: `${warnings} advertencias encontradas`,
+          hasBackendData: true,
+        }
+      }
+
+      if (validation_status === "VALID" && overall_score >= 90) {
+        return {
+          status: "excellent",
+          color: "text-green-600",
+          bgColor: "bg-green-50 border-green-200",
+          icon: CheckCircle,
+          label: "Diseño Perfecto",
+          score: overall_score,
+          details: "Archivo optimizado para corte láser",
+          hasBackendData: true,
+        }
+      }
+
+      return {
+        status: "good",
+        color: "text-blue-600",
+        bgColor: "bg-blue-50 border-blue-200",
+        icon: Shield,
+        label: "Diseño Válido",
+        score: overall_score,
+        details: "Archivo listo para producción",
+        hasBackendData: true,
+      }
+    }
+
+    // Fallback al sistema anterior si no hay datos del backend
     if (totalFiltered === 0)
       return {
         status: "excellent",
@@ -103,6 +165,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
         label: "Diseño Perfecto",
         score: 100,
         details: "No se detectaron artefactos",
+        hasBackendData: false,
       }
     if (phantomCount === 0 && totalFiltered < 3)
       return {
@@ -113,6 +176,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
         label: "Diseño Limpio",
         score: 95,
         details: "Filtrado básico aplicado",
+        hasBackendData: false,
       }
     if (phantomCount < 3 && totalFiltered < 10)
       return {
@@ -123,6 +187,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
         label: "Diseño Válido",
         score: 85,
         details: "Algunos elementos filtrados",
+        hasBackendData: false,
       }
     return {
       status: "filtered",
@@ -132,10 +197,15 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
       label: "Artefactos Filtrados",
       score: Math.max(70, 100 - phantomCount * 2),
       details: "Múltiples elementos filtrados",
+      hasBackendData: false,
     }
   }
 
   const getFilteringEfficiency = () => {
+    if (errorAnalysis) {
+      return errorAnalysis.overall_score
+    }
+
     const totalFiltered = getTotalFiltered()
     const phantomCount = metrics.filteredEntities.phantomEntities
 
@@ -145,7 +215,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
     return Math.max(70, 100 - phantomCount * 2)
   }
 
-  const qualityInfo = getQualityStatus()
+  const qualityInfo = getEnhancedQualityStatus()
   const filteringEfficiency = getFilteringEfficiency()
 
   return (
@@ -153,7 +223,16 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
       <CardHeader className="pb-3">
         <CardTitle className="text-[14px] font-medium text-[#18181B] flex items-center gap-2">
           <Target className="h-4 w-4 text-[#52525B]" />
-          Análisis DXF
+          Análisis DXF Avanzado
+          {qualityInfo.hasBackendData ? (
+            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+              API
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] h-4 px-1 bg-gray-50 text-gray-600 border-gray-200">
+              SIM
+            </Badge>
+          )}
         </CardTitle>
         {fileName && (
           <p className="text-[12px] text-[#71717A] truncate" title={fileName}>
@@ -163,7 +242,7 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Estado de Calidad */}
+        {/* Estado de Calidad Mejorado con datos del backend */}
         <div className={`p-3 rounded-md border ${qualityInfo.bgColor}`}>
           <div className="flex items-center gap-2 mb-2">
             <qualityInfo.icon className={`h-4 w-4 ${qualityInfo.color}`} />
@@ -171,7 +250,16 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
             <Badge variant="secondary" className="text-[10px] h-4 px-1">
               {qualityInfo.score}%
             </Badge>
-            {showQualityDetails && (
+            {qualityInfo.hasBackendData ? (
+              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                API
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px] h-4 px-1 bg-gray-50 text-gray-600 border-gray-200">
+                SIM
+              </Badge>
+            )}
+            {qualityInfo.hasBackendData && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -184,13 +272,73 @@ export function DXFInfoCard({ metrics, fileName, onSheetSizeChange }: DXFInfoCar
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-[11px] text-gray-600">Eficiencia de filtrado</span>
+              <span className="text-[11px] text-gray-600">
+                {qualityInfo.hasBackendData ? "Puntuación general" : "Eficiencia de filtrado"}
+              </span>
               <span className={`text-[12px] font-medium ${qualityInfo.color}`}>{qualityInfo.score}%</span>
             </div>
             <Progress value={qualityInfo.score} className="h-1" />
             <p className="text-[10px] text-gray-600">{qualityInfo.details}</p>
           </div>
+
+          {/* Detalles expandibles del análisis de errores */}
+          {showQualityDetails && errorAnalysis && (
+            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+              <div className="text-[11px] space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Integridad Geométrica:</span>
+                  <span className="font-medium">{errorAnalysis.quality_metrics.geometry_integrity}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Organización de Capas:</span>
+                  <span className="font-medium">{errorAnalysis.quality_metrics.layer_organization}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Estándares de Dibujo:</span>
+                  <span className="font-medium">{errorAnalysis.quality_metrics.drawing_standards}%</span>
+                </div>
+              </div>
+
+              {errorAnalysis.errors.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[10px] text-gray-600 mb-1">Problemas detectados:</p>
+                  <div className="space-y-1">
+                    {errorAnalysis.errors.slice(0, 2).map((error, index) => (
+                      <div key={index} className="flex items-center gap-1">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            error.type === "CRITICAL"
+                              ? "bg-red-500"
+                              : error.type === "WARNING"
+                                ? "bg-yellow-500"
+                                : "bg-blue-500"
+                          }`}
+                        />
+                        <span className="text-[9px] text-gray-600 truncate">{error.message}</span>
+                      </div>
+                    ))}
+                    {errorAnalysis.errors.length > 2 && (
+                      <p className="text-[9px] text-gray-500">+{errorAnalysis.errors.length - 2} más...</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {errorAnalysis.recommendations.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[10px] text-gray-600 mb-1">Recomendación principal:</p>
+                  <div className="flex items-center gap-1">
+                    <Info className="h-3 w-3 text-blue-500" />
+                    <span className="text-[9px] text-gray-600">{errorAnalysis.recommendations[0].action}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+        {!qualityInfo.hasBackendData && (
+          <p className="text-[9px] text-gray-500 mt-1">* Análisis simulado (servicio externo no disponible)</p>
+        )}
 
         {/* Métricas Principales */}
         <div className="grid grid-cols-2 gap-3">
